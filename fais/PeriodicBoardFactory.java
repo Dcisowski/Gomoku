@@ -1,7 +1,7 @@
 class PeriodicBoardFactory implements BoardFactory {
     public Board createBoard(int size) {
 
-        return new Board(size);
+        return new PeriodicBoard(size);
     }
     public GameNeighborhoodResolver createResolver() {
 

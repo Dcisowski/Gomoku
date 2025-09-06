@@ -8,13 +8,14 @@ class MoveDecisionCollector implements GameObserver {
     private Map<MoveType, List<Move>> moveMap = new EnumMap<>(MoveType.class);
     private Board board;
     private Mark playerMark;
+    private final GameNeighborhoodResolver resolver;
 
-    public MoveDecisionCollector(Board board, Mark playerSymbol) {
-        for (MoveType type : MoveType.values()) {
-            moveMap.put(type, new ArrayList<>());
-        }
+    public MoveDecisionCollector(Board board, Mark player, GameNeighborhoodResolver resolver) {
+        for (MoveType t : MoveType.values())
+            moveMap.put(t, new ArrayList<>());
         this.board = board;
-        this.playerMark = playerSymbol;
+        this.playerMark = player;
+        this.resolver = board.isPeriodic() ? new PeriodicalNeighborhoodResolver() : new StandardNeighborhoodResolver();
     }
 
     public void onCandidateMove(Move move, MoveType type) {
@@ -83,19 +84,16 @@ class MoveDecisionCollector implements GameObserver {
     }
 
     private int softPositionalBonus(Cell m) {
-        int N = board.getSize(), cx = N / 2, cy = N / 2;
-        int dist = Math.abs(m.getRow() - cx) + Math.abs(m.getCol() - cy);
-        int center = (N * 2 - dist);
+        int N = board.getSize(), cx = N/2, cy = N/2;
+        int dist = Math.abs(m.getRow()-cx) + Math.abs(m.getCol()-cy);
+        int center = (N*2 - dist);
+
         int adjOur = 0, adjEmpty = 0;
-        for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue;
-                Cell nb = board.getCell(m.getRow() + dx, m.getCol() + dy);
-                if (nb == null) continue;
-                if (nb.getSymbol() == playerMark) adjOur++;
-                else if (nb.isEmpty()) adjEmpty++;
-            }
-        return 100 * center + (4 * adjOur + adjEmpty);
+        for (Cell nb : resolver.getNeighbors(board, m.getRow(), m.getCol())) {
+            if (nb.getSymbol() == playerMark) adjOur++;
+            else if (nb.isEmpty()) adjEmpty++;
+        }
+        return 100*center + (4*adjOur + adjEmpty);
     }
 
     // Fallback: przeglądamy wszystkie puste pola, preferujemy wydłużenie NAJŁAŃCUCHA
