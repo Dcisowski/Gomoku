@@ -217,6 +217,53 @@ public class GomokuTests {
         assertTrue((move.position().col() == 0 && move.position().row() == 1) );
     }
 
+    @Test
+    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException  {
+        Board periodicBoard = new PeriodicBoard(10);
+        periodicBoard.getCell(2, 1).setSymbol(Mark.CROSS);
+        periodicBoard.getCell(3, 0).setSymbol(Mark.CROSS);
+        periodicBoard.getCell(4, 9).setSymbol(Mark.CROSS);
+        periodicBoard.getCell(5, 8).setSymbol(Mark.CROSS);
+
+        periodicBoard.getCell(7, 5).setSymbol(Mark.CROSS);
+
+
+        GameStatePublisher periodicPublisher = new GameStatePublisher(Mark.CROSS);
+        MoveDecisionCollector periodicCollector = new MoveDecisionCollector(periodicBoard, Mark.CROSS);
+        periodicPublisher.addObserver(periodicCollector);
+        MoveAnalyzer periodicAnalyzer = new MoveAnalyzer(periodicPublisher, Mark.CROSS);
+
+        periodicAnalyzer.analyze(periodicBoard);
+        Move move = periodicCollector.getBestMove();
+        assertNotNull(move);
+        // blokuje wygraną x w trybie periodycznym
+        assertTrue((move.position().col() == 2 && move.position().row() == 1) || (move.position().col() == 7 && move.position().row() == 6));
+    }
+
+    @Test
+    void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException  {
+        Board periodicBoard = new PeriodicBoard(10);
+        periodicBoard.getCell(4, 0).setSymbol(Mark.CROSS);
+        periodicBoard.getCell(5, 9).setSymbol(Mark.CROSS);
+        periodicBoard.getCell(6, 8).setSymbol(Mark.CROSS);
+
+        periodicBoard.getCell(7, 5).setSymbol(Mark.NOUGHT);
+        periodicBoard.getCell(7, 6).setSymbol(Mark.NOUGHT);
+        periodicBoard.getCell(7, 4).setSymbol(Mark.NOUGHT);
+
+
+        GameStatePublisher periodicPublisher = new GameStatePublisher(Mark.CROSS);
+        MoveDecisionCollector periodicCollector = new MoveDecisionCollector(periodicBoard, Mark.CROSS);
+        periodicPublisher.addObserver(periodicCollector);
+        MoveAnalyzer periodicAnalyzer = new MoveAnalyzer(periodicPublisher, Mark.CROSS);
+
+        periodicAnalyzer.analyze(periodicBoard);
+        Move move = periodicCollector.getBestMove();
+        assertNotNull(move);
+        // blokuje wygraną x w trybie periodycznym
+        assertTrue((move.position().col() == 7 && move.position().row() == 7));
+    }
+
     // === Punkt 13: niepoprawny ruch oznaczony ? nie prowadzi do zwycięstwa ===
     @Test
     void testRejectIncorrectMoveMarkedAsQuestion() throws TheWinnerIsException, WrongBoardStateException  {
@@ -301,4 +348,148 @@ public class GomokuTests {
         }
         assertThrows(TheWinnerIsException.class, () -> analyzer.analyze(board));
     }
+    @Test
+    void testLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.CROSS);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.CROSS);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.CROSS);
+
+        board.getCell(0, 2).setSymbol(Mark.NOUGHT);
+        board.getCell(0, 4).setSymbol(Mark.CROSS);
+        board.getCell(0, 5).setSymbol(Mark.CROSS);
+        board.getCell(0, 7).setSymbol(Mark.CROSS);
+        board.getCell(0, 9).setSymbol(Mark.NOUGHT);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue((move.position().col() == 6 && move.position().row() == 0));
+    }
+
+    @Test
+    void testFastestLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.NOUGHT);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.NOUGHT);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.NOUGHT);
+
+        board.getCell(1, 4).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 5).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 6).setSymbol(Mark.NOUGHT);
+        board.getCell(3, 7).setSymbol(Mark.NOUGHT);
+        board.getCell(4, 7).setSymbol(Mark.NOUGHT);
+        board.getCell(5, 5).setSymbol(Mark.NOUGHT);
+        board.getCell(5, 6).setSymbol(Mark.NOUGHT);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 7 && move.position().row() == 1)
+                || (move.position().col() == 3 && move.position().row() == 1)
+        );
+    }
+    @Test
+    void testBlockingLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.CROSS);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.CROSS);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.CROSS);
+
+        board.getCell(1, 4).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 5).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 6).setSymbol(Mark.NOUGHT);
+        board.getCell(3, 7).setSymbol(Mark.CROSS);
+        board.getCell(4, 7).setSymbol(Mark.CROSS);
+        board.getCell(5, 5).setSymbol(Mark.CROSS);
+        board.getCell(5, 6).setSymbol(Mark.CROSS);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 7 && move.position().row() == 1)
+                        || (move.position().col() == 3 && move.position().row() == 1)
+        );
+    }
+    @Test
+    void testBlockingLeadingToWinningComplex() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.NOUGHT);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.NOUGHT);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.NOUGHT);
+
+        board.getCell(0, 7).setSymbol(Mark.CROSS);
+
+        board.getCell(2, 2).setSymbol(Mark.NOUGHT);
+        board.getCell(2, 3).setSymbol(Mark.NOUGHT);
+        board.getCell(2, 4).setSymbol(Mark.CROSS);
+        board.getCell(2, 5).setSymbol(Mark.NOUGHT);
+        board.getCell(2, 6).setSymbol(Mark.NOUGHT);
+
+        board.getCell(3, 3).setSymbol(Mark.CROSS);
+        board.getCell(3, 5).setSymbol(Mark.CROSS);
+        board.getCell(3, 6).setSymbol(Mark.NOUGHT);
+        board.getCell(3, 9).setSymbol(Mark.NOUGHT);
+
+        board.getCell(4, 2).setSymbol(Mark.CROSS);
+        board.getCell(4, 3).setSymbol(Mark.CROSS);
+        board.getCell(4, 4).setSymbol(Mark.NOUGHT);
+        board.getCell(4, 6).setSymbol(Mark.NOUGHT);
+        board.getCell(4, 8).setSymbol(Mark.CROSS);
+
+        board.getCell(5, 3).setSymbol(Mark.CROSS);
+        board.getCell(5, 7).setSymbol(Mark.CROSS);
+        board.getCell(5, 8).setSymbol(Mark.NOUGHT);
+
+        board.getCell(6, 0).setSymbol(Mark.CROSS);
+        board.getCell(6, 2).setSymbol(Mark.CROSS);
+        board.getCell(6, 3).setSymbol(Mark.NOUGHT);
+        board.getCell(6, 8).setSymbol(Mark.CROSS);
+
+        board.getCell(7, 9).setSymbol(Mark.NOUGHT);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue(move.position().col() == 1 && move.position().row() == 5);
+    }
+
+    @Test
+    void testCorrectMove() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.CROSS);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.CROSS);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.CROSS);
+
+        board.getCell(0, 1).setSymbol(Mark.CROSS);
+        board.getCell(0, 5).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 1).setSymbol(Mark.CROSS);
+        board.getCell(2, 1).setSymbol(Mark.CROSS);
+
+        board.getCell(4, 4).setSymbol(Mark.NOUGHT);
+        board.getCell(4, 5).setSymbol(Mark.CROSS);
+        board.getCell(5, 5).setSymbol(Mark.CROSS);
+        board.getCell(6, 6).setSymbol(Mark.CROSS);
+        board.getCell(6, 7).setSymbol(Mark.CROSS);
+        board.getCell(7, 7).setSymbol(Mark.CROSS);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue(move.position().col() == 5 && move.position().row() == 6);
+    }
+
+
 }

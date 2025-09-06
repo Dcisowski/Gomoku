@@ -62,6 +62,14 @@ class MoveDecisionCollector implements GameObserver {
             case OPEN_FOUR -> 700_000;
         };
 
+        if (type == MoveType.BLOCKING) {
+            Mark opp = (playerMark == Mark.CROSS) ? Mark.NOUGHT : Mark.CROSS;
+            int mates = countBlockedFourPlusOne(move.position().row(), move.position().col(), opp);
+
+            // strongly prefer blocking a mate-in-1 over blocking EEOOOEE
+            base += 1_000_000 * mates;   // if mates>0, this dominates the tie-break
+        }
+
         // 1) ile REALNIE mamy po ruchu w linii (liczy tylko nasze kamienie)
         int run = maxRunAfter(move.position().row(), move.position().col(), playerMark);
         // 2) maksymalna DŁUGOŚĆ linii, jaką można kiedykolwiek uzyskać w tym miejscu,
@@ -81,6 +89,35 @@ class MoveDecisionCollector implements GameObserver {
                 + 2_000 * potential
                 + 200   * openEnds
                 + softPositionalBonus(cell);
+    }
+
+    private int countBlockedFourPlusOne(int row, int col, Mark opp) {
+        int count = 0;
+        for (Line ln : board.getAllLines()) {
+            List<Cell> cells = ln.getCells();
+            for (int i = 0; i <= cells.size() - 5; i++) {
+                int oppCnt = 0, emptyCnt = 0;
+                Cell emptyCell = null;
+
+                for (int j = 0; j < 5; j++) {
+                    Cell c = cells.get(i + j);
+                    if (c.getSymbol() == opp) {
+                        oppCnt++;
+                    } else if (c.isEmpty()) {
+                        emptyCnt++; emptyCell = c;
+                    } else {
+                        // our stone in the window -> not an opponent 4+1
+                        oppCnt = 99; break;
+                    }
+                }
+                if (oppCnt == 4 && emptyCnt == 1 &&
+                        emptyCell != null &&
+                        emptyCell.getRow() == row && emptyCell.getCol() == col) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private int softPositionalBonus(Cell m) {
