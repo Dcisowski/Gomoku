@@ -10,7 +10,7 @@ class MoveDecisionCollector implements GameObserver {
     private Mark playerMark;
     private final GameNeighborhoodResolver resolver;
 
-    public MoveDecisionCollector(Board board, Mark player, GameNeighborhoodResolver resolver) {
+    public MoveDecisionCollector(Board board, Mark player) {
         for (MoveType t : MoveType.values())
             moveMap.put(t, new ArrayList<>());
         this.board = board;
@@ -63,12 +63,12 @@ class MoveDecisionCollector implements GameObserver {
         };
 
         // 1) ile REALNIE mamy po ruchu w linii (liczy tylko nasze kamienie)
-        int run = maxRunAfter(board, move.position().row(), move.position().col(), playerMark);
+        int run = maxRunAfter(move.position().row(), move.position().col(), playerMark);
         // 2) maksymalna DŁUGOŚĆ linii, jaką można kiedykolwiek uzyskać w tym miejscu,
         //    jeśli wypełnimy wszystkie puste do pierwszego przeciwnika/krawędzi
-        int potential = maxPotentialAfter(board, move.position().row(), move.position().col(), playerMark);
+        int potential = maxPotentialAfter(move.position().row(), move.position().col(), playerMark);
         // 3) liczba „żywych” końców po ruchu (0..2)
-        int openEnds = openEndsAfter(board, move.position().row(), move.position().col(), playerMark);
+        int openEnds = openEndsAfter(move.position().row(), move.position().col(), playerMark);
         Cell cell = new Cell(move.position().row(), move.position().col());
         // sanity: jeśli kandydat oznaczony jako WINNING nie daje 5 – odrzuć
         if (type == MoveType.WINNING && run < 5) return -1_000_000;
@@ -108,10 +108,10 @@ class MoveDecisionCollector implements GameObserver {
                 Cell c = board.getCell(x, y);
                 if (c == null || !c.isEmpty()) continue;
 
-                int run  = maxRunAfter(board, x, y, playerMark);
-                int pot  = maxPotentialAfter(board, x, y, playerMark);
-                int ends = openEndsAfter(board, x, y, playerMark);
-                int oppRun = maxRunAfter(board, x, y, opp);
+                int run  = maxRunAfter(x, y, playerMark);
+                int pot  = maxPotentialAfter(x, y, playerMark);
+                int ends = openEndsAfter(x, y, playerMark);
+                int oppRun = maxRunAfter(x, y, opp);
 
                 int score = 20_000 * run + 5_000 * pot + 200 * ends
                         - 5_000 * oppRun + softPositionalBonus(c);
@@ -124,23 +124,23 @@ class MoveDecisionCollector implements GameObserver {
         return new Move(new Position(best.getCol(), best.getRow()), playerMark);
     }
 
-    private int maxRunAfter(Board b,int x,int y,Mark sym) {
-        if(!b.getCell(x,y).isEmpty())
+    private int maxRunAfter(int x,int y,Mark sym) {
+        if(!board.getCell(x,y).isEmpty())
             return 0; // symulacja
         // policz max po wstawieniu symbolu
         int[][] dirs={{1,0},{0,1},{1,1},{1,-1}};
         int best=0;
         for(var d:dirs){
             int cnt=1;
-            cnt+=count(b,x,y,d[0],d[1],sym);
-            cnt+=count(b,x,y,-d[0],-d[1],sym);
+            cnt+=count(x,y,d[0],d[1],sym);
+            cnt+=count(x,y,-d[0],-d[1],sym);
             if(cnt>best)
                 best=cnt;
         }
         return best;
     }
     // maksymalna DŁUGOŚĆ linii możliwa w przyszłości (kamienie + puste do pierwszego wroga/krawędzi)
-    private int maxPotentialAfter(Board b, int x, int y, Mark sym) {
+    private int maxPotentialAfter(int x, int y, Mark sym) {
         int[][] dirs = {{1,0},{0,1},{1,1},{1,-1}};
         int best = 0;
         Mark opp = (playerMark == Mark.CROSS) ? Mark.NOUGHT : Mark.CROSS;
@@ -155,7 +155,7 @@ class MoveDecisionCollector implements GameObserver {
         return best;
     }
     // liczba „żywych” końców po ruchu (czy bezpośrednie sąsiednie pola końców są puste)
-    private int openEndsAfter(Board b, int x, int y, Mark sym) {
+    private int openEndsAfter(int x, int y, Mark sym) {
         int[][] dirs = {{1,0},{0,1},{1,1},{1,-1}};
         int ends = 0;
         Mark opp = (playerMark == Mark.CROSS) ? Mark.NOUGHT : Mark.CROSS;
@@ -167,48 +167,54 @@ class MoveDecisionCollector implements GameObserver {
         }
         return Math.min(2, ends);
     }
-    private int count(Board b,int x,int y,int dx,int dy,Mark sym){
-        int c=0;
-        while(true){
-            x+=dx;
-            y+=dy;
-            Cell cell=b.getCell(x,y);
-            if(cell==null||cell.getSymbol()!=sym)
-                break;
+    // How many of 'sym' in a straight ray after (x,y)
+    private int count(int x, int y, int dx, int dy, Mark sym) {
+        int c = 0, n = board.getSize();
+        for (int step = 1; step < n; step++) {
+            Cell cell = board.getCell(x + dx * step, y + dy * step);
+            if (cell == null) break;                 // only on non-periodic
+            if (cell.getSymbol() != sym) break;
             c++;
         }
         return c;
     }
-    // pomocnicze liczniki
+
+    // Stones of 'sym' contiguous after (x,y)
     private int countStones(int x, int y, int dx, int dy, Mark sym) {
-        int c = 0;
-        while (true) {
-            x += dx; y += dy;
-            Cell cell = board.getCell(x, y);
-            if (cell == null || cell.getSymbol() != sym) break;
+        int c = 0, n = board.getSize();
+        for (int step = 1; step < n; step++) {
+            Cell cell = board.getCell(x + dx * step, y + dy * step);
+            if (cell == null) break;
+            if (cell.getSymbol() != sym) break;
             c++;
         }
         return c;
     }
+
+    // Empty cells until the first opponent or our own stone
     private int countEmpties(int x, int y, int dx, int dy, Mark opp) {
-        int c = 0;
-        while (true) {
-            x += dx; y += dy;
-            Cell cell = board.getCell(x, y);
-            if (cell == null || cell.getSymbol() == opp) break;
-            if (!cell.isEmpty()) break; // nasze -> nie liczymy dalej
+        int c = 0, n = board.getSize();
+        for (int step = 1; step < n; step++) {
+            Cell cell = board.getCell(x + dx * step, y + dy * step);
+            if (cell == null) break;                 // non-periodic edge
+            if (cell.getSymbol() == opp) break;      // blocked by opponent
+            if (!cell.isEmpty()) break;              // our stone blocks potential
             c++;
         }
         return c;
     }
-    // 0 -> puste zaraz za końcem sekwencji, 1 -> nasze, 2 -> przeciwnik/ściana
+
+    // 0 -> open end (next cell empty), 2 -> closed (opponent or wall)
+// bounded to avoid looping on torus when the whole ray is ours/empty
     private int edgeAfter(int x, int y, int dx, int dy, Mark sym) {
-        while (true) {
-            x += dx; y += dy;
-            Cell cell = board.getCell(x, y);
-            if (cell == null) return 2;
-            if (cell.getSymbol() == sym) continue;
-            return cell.isEmpty() ? 0 : 2;
+        int n = board.getSize();
+        for (int step = 1; step < n; step++) {
+            Cell cell = board.getCell(x + dx * step, y + dy * step);
+            if (cell == null) return 2;              // hard edge (standard board)
+            if (cell.getSymbol() == sym) continue;   // keep skipping our stones
+            return cell.isEmpty() ? 0 : 2;           // empty -> open, else closed
         }
+        // we wrapped the whole ring without finding a non-our cell -> treat as closed
+        return 2;
     }
 }

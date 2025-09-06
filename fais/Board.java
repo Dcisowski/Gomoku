@@ -62,4 +62,17 @@ class Board {
         }
         return lines;
     }
+
+    public void setCell(int x, int y, Mark mark) {
+        grid[x][y].setSymbol(mark);
+    }
+
+    public void initalizeBoard(Set<Move> moves) {
+        for (Move move : moves) {
+            Position pos = move.position();
+            int x = pos.row();
+            int y = pos.col();
+            setCell(x, y, move.mark());
+        }
+    }
 }

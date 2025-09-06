@@ -196,13 +196,13 @@ public class GomokuTests {
     }
     @Test
     void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException  {
-        Board periodicBoard = new Board(10);
+        Board periodicBoard = new PeriodicBoard(10);
         periodicBoard.getCell(0, 9).setSymbol(Mark.CROSS);
         periodicBoard.getCell(2, 1).setSymbol(Mark.CROSS);
         periodicBoard.getCell(3, 2).setSymbol(Mark.CROSS);
         periodicBoard.getCell(4, 3).setSymbol(Mark.CROSS);
-        periodicBoard.getCell(4, 3).setSymbol(Mark.CROSS);
-        periodicBoard.getCell(5, 4).setSymbol(Mark.CROSS);
+
+        periodicBoard.getCell(7, 5).setSymbol(Mark.NOUGHT);
 
 
         GameStatePublisher periodicPublisher = new GameStatePublisher(Mark.NOUGHT);

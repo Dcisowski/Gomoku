@@ -9,8 +9,8 @@ class PeriodicBoard extends Board {
     // zawijanie współrzędnych (modulo)
     @Override
     public Cell getCell(int x, int y) {
-        int nx = ((x % size) + size) % size;
-        int ny = ((y % size) + size) % size;
+        int nx = Math.floorMod(x, size);
+        int ny = Math.floorMod(y, size);
         return grid[nx][ny];
     }
 
