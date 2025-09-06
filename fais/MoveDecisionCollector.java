@@ -77,6 +77,9 @@ class MoveDecisionCollector implements GameObserver {
         int potential = maxPotentialAfter(move.position().row(), move.position().col(), playerMark);
         // 3) liczba „żywych” końców po ruchu (0..2)
         int openEnds = openEndsAfter(move.position().row(), move.position().col(), playerMark);
+        int openThreeDirs = countOpenThreeForksAfter(move.position().row(),
+                move.position().col(),
+                playerMark);
         Cell cell = new Cell(move.position().row(), move.position().col());
         // sanity: jeśli kandydat oznaczony jako WINNING nie daje 5 – odrzuć
         if (type == MoveType.WINNING && run < 5) return -1_000_000;
@@ -84,10 +87,20 @@ class MoveDecisionCollector implements GameObserver {
         // Ruchy bez szans na dojście do 5 (zamknięte z obu stron) mocno karzemy:
         if (type != MoveType.WINNING && potential < 5) return -500_000 + softPositionalBonus(cell);
 
+        int easyFourPenalty = 0;
+        if (run == 4 && openEnds <= 1 && openThreeDirs < 2) {
+            easyFourPenalty = 200_000;  // skaluje się względem innych wag
+        }
+
+// 4)   Premia za forka (każdy kierunek open-3 daje premię, 2 kierunki = duża premia)
+        int forkBonus = 300_000 * openThreeDirs;
+
         return base
                 + 10_000 * run
                 + 2_000 * potential
                 + 200   * openEnds
+                + forkBonus
+                - easyFourPenalty
                 + softPositionalBonus(cell);
     }
 
@@ -149,12 +162,14 @@ class MoveDecisionCollector implements GameObserver {
                 int pot  = maxPotentialAfter(x, y, playerMark);
                 int ends = openEndsAfter(x, y, playerMark);
                 int oppRun = maxRunAfter(x, y, opp);
+                int forks = countOpenThreeForksAfter(x, y, playerMark);
 
                 int score = 20_000 * run + 5_000 * pot + 200 * ends
-                        - 5_000 * oppRun + softPositionalBonus(c);
+                        - 5_000 * oppRun + softPositionalBonus(c)
+                        + 300_000 * forks;
 
-                if (pot < 5) score -= 50_000; // nie ładujemy się w „ślepą uliczkę”
-
+                if (run == 4 && ends <= 1 && forks < 2) score -= 200_000;
+                if (pot < 5) score -= 50_000;
                 if (score > bestScore) { bestScore = score; best = c; }
             }
 
@@ -169,8 +184,8 @@ class MoveDecisionCollector implements GameObserver {
         int best=0;
         for(var d:dirs){
             int cnt=1;
-            cnt+=count(x,y,d[0],d[1],sym);
-            cnt+=count(x,y,-d[0],-d[1],sym);
+            cnt+=countSymbols(x,y,d[0],d[1],sym);
+            cnt+=countSymbols(x,y,-d[0],-d[1],sym);
             if(cnt>best)
                 best=cnt;
         }
@@ -182,8 +197,8 @@ class MoveDecisionCollector implements GameObserver {
         int best = 0;
         Mark opp = (playerMark == Mark.CROSS) ? Mark.NOUGHT : Mark.CROSS;
         for (int[] d : dirs) {
-            int oursL = countStones(x, y, -d[0], -d[1], sym);
-            int oursR = countStones(x, y,  d[0],  d[1], sym);
+            int oursL = countSymbols(x, y, -d[0], -d[1], sym);
+            int oursR = countSymbols(x, y,  d[0],  d[1], sym);
             int empL  = countEmpties(x, y, -d[0], -d[1], opp);
             int empR  = countEmpties(x, y,  d[0],  d[1], opp);
             int pot = 1 + oursL + oursR + empL + empR;
@@ -204,20 +219,9 @@ class MoveDecisionCollector implements GameObserver {
         }
         return Math.min(2, ends);
     }
-    // How many of 'sym' in a straight ray after (x,y)
-    private int count(int x, int y, int dx, int dy, Mark sym) {
-        int c = 0, n = board.getSize();
-        for (int step = 1; step < n; step++) {
-            Cell cell = board.getCell(x + dx * step, y + dy * step);
-            if (cell == null) break;                 // only on non-periodic
-            if (cell.getSymbol() != sym) break;
-            c++;
-        }
-        return c;
-    }
 
     // Stones of 'sym' contiguous after (x,y)
-    private int countStones(int x, int y, int dx, int dy, Mark sym) {
+    private int countSymbols(int x, int y, int dx, int dy, Mark sym) {
         int c = 0, n = board.getSize();
         for (int step = 1; step < n; step++) {
             Cell cell = board.getCell(x + dx * step, y + dy * step);
@@ -236,6 +240,39 @@ class MoveDecisionCollector implements GameObserver {
             if (cell == null) break;                 // non-periodic edge
             if (cell.getSymbol() == opp) break;      // blocked by opponent
             if (!cell.isEmpty()) break;              // our stone blocks potential
+            c++;
+        }
+        return c;
+    }
+
+    private int countOpenThreeForksAfter(int row, int col, Mark sym) {
+        int[][] dirs = {{1,0},{0,1},{1,1},{1,-1}};
+        int n = board.getSize();
+        int dirsOpen3 = 0;
+
+        for (int[] d : dirs) {
+            int left  = countSymbolsBounded(row, col, -d[0], -d[1], sym, n);
+            int right = countSymbolsBounded(row, col,  d[0],  d[1], sym, n);
+            int len   = left + 1 + right;
+
+            // komórki tuż za końcami naszego segmentu
+            Cell leftEnd  = board.getCell(row - d[0] * (left  + 1), col - d[1] * (left  + 1));
+            Cell rightEnd = board.getCell(row + d[0] * (right + 1), col + d[1] * (right + 1));
+
+            boolean openL = (leftEnd  != null) && leftEnd.isEmpty();
+            boolean openR = (rightEnd != null) && rightEnd.isEmpty();
+
+            if (len >= 3 && openL && openR) dirsOpen3++;
+        }
+        return dirsOpen3;
+    }
+
+    // wersja bounded – bez pętli nieskończonych na planszy periodycznej
+    private int countSymbolsBounded(int x, int y, int dx, int dy, Mark sym, int n) {
+        int c = 0;
+        for (int step = 1; step < n; step++) {
+            Cell cell = board.getCell(x + dx * step, y + dy * step);
+            if (cell == null || cell.getSymbol() != sym) break;
             c++;
         }
         return c;

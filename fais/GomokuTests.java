@@ -491,5 +491,28 @@ public class GomokuTests {
         assertTrue(move.position().col() == 5 && move.position().row() == 6);
     }
 
+    @Test
+    void testIncorrectMove() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10);
+        GameStatePublisher publisher = new GameStatePublisher(Mark.NOUGHT);
+        MoveDecisionCollector collector = new MoveDecisionCollector(board, Mark.NOUGHT);
+        publisher.addObserver(collector);
+        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, Mark.NOUGHT);
+
+        board.getCell(1, 0).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 1).setSymbol(Mark.NOUGHT);
+        board.getCell(1, 2).setSymbol(Mark.NOUGHT);
+
+        analyzer.analyze(board);
+        Move move = collector.getBestMove();
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 1 && move.position().row() ==2)
+                || (move.position().col() == 0 && move.position().row() == 2)
+                || (move.position().col() == 2 && move.position().row() == 2)
+        );
+    }
+
 
 }
