@@ -1,78 +1,128 @@
 import fais.zti.oramus.gomoku.Mark;
-import fais.zti.oramus.gomoku.Move;
-import fais.zti.oramus.gomoku.Position;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
-class Board {
-    protected final int size;
-    protected final Cell[][] grid;
-    protected final boolean periodic;
+public class Board {
+    private final int n;
+    private final boolean periodic;
+    private final Mark[][] grid;
 
-    public Board(int size) { this(size, false); }
 
-    protected Board(int size, boolean periodic) {
-        this.size = size;
+    public Board(int n, boolean periodic) {
+        this.n = n;
         this.periodic = periodic;
-        this.grid = new Cell[size][size];
-        for (int x = 0; x < size; x++)
-            for (int y = 0; y < size; y++)
-                grid[x][y] = new Cell(x, y);
+        this.grid = new Mark[n][n];
+        int r, c;
+        for (r = 0; r < n; r++) for (c = 0; c < n; c++) grid[r][c] = Mark.NULL;
     }
 
-    public int getSize() { return size; }
-    public boolean isPeriodic() { return periodic; }
-
-    // standard: poza planszą -> null
-    public Cell getCell(int x, int y) {
-        if (x < 0 || y < 0 || x >= size || y >= size) return null;
-        return grid[x][y];
+    public int size() {
+        return n;
     }
 
-    // linie bez zawijania (tak jak dotąd)
-    public List<Line> getAllLines() {
-        List<Line> lines = new ArrayList<>();
+    public boolean isPeriodic() {
+        return periodic;
+    }
 
-        // „wiersze i kolumny” w naszej konwencji indeksów
-        for (int i = 0; i < size; i++) {
-            Line row = new Line();
-            Line col = new Line();
-            for (int j = 0; j < size; j++) {
-                row.add(grid[i][j]);
-                col.add(grid[j][i]);
-            }
-            lines.add(row);
-            lines.add(col);
+    public Mark get(int r, int c) {
+        return grid[r][c];
+    }
+
+    public void set(int r, int c, Mark m) {
+        grid[r][c] = m;
+    }
+
+    public boolean isEmpty(int r, int c) {
+        return grid[r][c] == Mark.NULL;
+    }
+
+
+    public boolean inBounds(int r, int c) {
+        return r >= 0 && r < n && c >= 0 && c < n;
+    }
+
+
+    public Board copy() {
+        Board b = new Board(n, periodic);
+        int r, c;
+        for (r = 0; r < n; r++) for (c = 0; c < n; c++) b.grid[r][c] = grid[r][c];
+        return b;
+    }
+
+
+    public Point next(int r, int c, Direction d) {
+        int nr = r + d.dr, nc = c + d.dc;
+        if (periodic) {
+            if (nr < 0) nr = n - 1;
+            else if (nr >= n) nr = 0;
+            if (nc < 0) nc = n - 1;
+            else if (nc >= n) nc = 0;
+            return new Point(nr, nc);
+        } else {
+            if (!inBounds(nr, nc)) return null;
+            return new Point(nr, nc);
         }
-
-        // diagonale bez zawijania
-        for (int k = 0; k <= 2 * (size - 1); k++) {
-            Line d1 = new Line();
-            Line d2 = new Line();
-            for (int i = 0; i < size; i++) {
-                int j = k - i;
-                if (j >= 0 && j < size) d1.add(grid[i][j]);
-                int jj = size - 1 - k + i;
-                if (jj >= 0 && jj < size) d2.add(grid[i][jj]);
-            }
-            if (d1.getCells().size() >= 5) lines.add(d1);
-            if (d2.getCells().size() >= 5) lines.add(d2);
-        }
-        return lines;
     }
 
-    public void setCell(int x, int y, Mark mark) {
-        grid[x][y].setSymbol(mark);
+
+    public int countForward(int r, int c, Direction d, Mark m) {
+        int cnt = 0, steps = 0;
+        Point p = new Point(r, c);
+        while (true) {
+            Point q = next(p.r, p.c, d);
+            if (q == null) break;
+            if (q.r == r && q.c == c) break;
+            if (grid[q.r][q.c] == m) {
+                cnt++;
+                p = q;
+            } else break;
+            steps++;
+            if (steps >= n) break;
+        }
+        return cnt;
     }
 
-    public void initalizeBoard(Set<Move> moves) {
-        for (Move move : moves) {
-            Position pos = move.position();
-            int x = pos.row();
-            int y = pos.col();
-            setCell(x, y, move.mark());
+
+    public int runLengthThrough(int r, int c, Direction d, Mark m) {
+        int a = countForward(r, c, Direction.opposite(d), m);
+        int b = countForward(r, c, d, m);
+        return a + 1 + b;
+    }
+
+
+    public Point[] endsOfRun(int r, int c, Direction d, Mark m) {
+        int lr = r, lc = c, steps = 0;
+        while (true) {
+            Point prev = next(lr, lc, Direction.opposite(d));
+            if (prev == null) break;
+            if (grid[prev.r][prev.c] == m) {
+                lr = prev.r;
+                lc = prev.c;
+            } else break;
+            steps++;
+            if (steps >= n) break;
         }
+        int rr = r, rc = c;
+        steps = 0;
+        while (true) {
+            Point nxt = next(rr, rc, d);
+            if (nxt == null) break;
+            if (grid[nxt.r][nxt.c] == m) {
+                rr = nxt.r;
+                rc = nxt.c;
+            } else break;
+            steps++;
+            if (steps >= n) break;
+        }
+        Point before = next(lr, lc, Direction.opposite(d));
+        Point after = next(rr, rc, d);
+        return new Point[]{before, after};
+    }
+
+
+    public int count(Mark m) {
+        int cnt = 0;
+        int r, c;
+        for (r = 0; r < n; r++) for (c = 0; c < n; c++) if (grid[r][c] == m) cnt++;
+        return cnt;
     }
 }

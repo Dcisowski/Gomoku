@@ -1,47 +1,37 @@
 import fais.zti.oramus.gomoku.*;
-
+import java.util.Iterator;
 import java.util.Set;
 
 public class Gomoku implements Game {
-    private boolean periodicBoundaryConditionsFlag;
-    private int size;
-    private Mark firstMark;
+    private int n = 10; private boolean periodic = false; private Mark first = Mark.CROSS;
 
-    public Gomoku() {
-        periodicBoundaryConditionsFlag = false;
-    }
 
-    public boolean getPeriodicBoundaryConditionsFlag() {
-        return periodicBoundaryConditionsFlag;
-    }
+    @Override public void firstMark(Mark first){ this.first = first; }
+    @Override public void size(int size){ this.n = size; }
+    @Override public void periodicBoundaryConditionsInUse(){ this.periodic = true; }
+
 
     @Override
-    public void firstMark(Mark first) {
-        this.firstMark = first;
-    }
-
-    @Override
-    public void size(int size) {
-        this.size=size;
-    }
-
-    @Override
-    public void periodicBoundaryConditionsInUse() {
-        periodicBoundaryConditionsFlag = true;
-    }
-
-    @Override
-    public Move nextMove(Set<Move> boardState, Mark nextMoveMark) throws ResignException, TheWinnerIsException, WrongBoardStateException {
-        Board board = GameInitializer.initialize(size, periodicBoundaryConditionsFlag);
-        board.initalizeBoard(boardState);
-
-        GameStatePublisher publisher = new GameStatePublisher(nextMoveMark);
-        MoveDecisionCollector collector = new MoveDecisionCollector(board, nextMoveMark);
-        publisher.addObserver(collector);
-        MoveAnalyzer analyzer = new MoveAnalyzer(publisher, nextMoveMark);
-        analyzer.analyze(board);
-
-
-        return collector.getBestMove();
+    public Move nextMove(Set<Move> boardState, Mark nextMoveMark)
+            throws ResignException, TheWinnerIsException, WrongBoardStateException {
+        BoardFactory f = periodic ? new PeriodicBoardFactory() : new StandardBoardFactory();
+        Board b = f.create(n);
+// load state
+        if(boardState!=null){
+            Iterator<Move> it = boardState.iterator();
+            while(it.hasNext()){
+                Move m = it.next();
+                int r = m.position().row(); int c = m.position().col();
+                if(r<0||r>=n||c<0||c>=n) throw new WrongBoardStateException();
+                if(!b.isEmpty(r,c)) throw new WrongBoardStateException();
+                b.set(r,c, m.mark());
+            }
+        }
+// (optionally) verify consistency with first player info (not strictly necessary for logic)
+// analyze & map result
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+        AnalysisResult res = analyzer.analyze(b, nextMoveMark);
+        if(res.type == MoveType.RESIGN) throw new ResignException();
+        return res.move; // includes mark of nextMoveMark by construction
     }
 }

@@ -1,8 +1,6 @@
-class StandardBoardFactory implements BoardFactory {
-    public Board createBoard(int size) {
-        return new Board(size);
-    }
-    public GameNeighborhoodResolver createResolver() {
-        return new StandardNeighborhoodResolver();
+public class StandardBoardFactory implements BoardFactory {
+    @Override
+    public Board create(int size) {
+        return new Board(size, false);
     }
 }

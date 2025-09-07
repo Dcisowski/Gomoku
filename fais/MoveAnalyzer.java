@@ -1,113 +1,254 @@
 import fais.zti.oramus.gomoku.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+public class MoveAnalyzer {
+    private static final Direction[] AXES = new Direction[]{Direction.E, Direction.S, Direction.SE, Direction.NE};
 
-class MoveAnalyzer {
-    private GameStatePublisher publisher;
-    private Mark playerSymbol;
-    private Mark opponentSymbol;
+    public AnalysisResult analyze(Board board, Mark toMove)
+            throws WrongBoardStateException, TheWinnerIsException {
+        validateBoard(board);
+        Mark winner = detectWinner(board);
+        if (winner != null) throw new TheWinnerIsException(winner);
 
-    public MoveAnalyzer(GameStatePublisher publisher, Mark playerSymbol) {
-        this.publisher = publisher;
-        this.playerSymbol = playerSymbol;
-        this.opponentSymbol = (playerSymbol == Mark.CROSS) ? Mark.NOUGHT : Mark.CROSS;
+        Mark mine = toMove;
+        Mark opp = (toMove == Mark.CROSS ? Mark.NOUGHT : Mark.CROSS);
+
+        // 1) Nasza wygrana teraz
+        Move[] myWins = winningMoves(board, mine, 1);
+        if (myWins[0] != null) return new AnalysisResult(MoveType.WINNING, myWins[0]);
+
+        // 2) Obrona: natychmiastowe wygrane przeciwnika
+        Move[] oppWins = winningMoves(board, opp, 3);
+        int oppWinCount = countNonNull(oppWins);
+        if (oppWinCount >= 2) return AnalysisResult.resign();
+        if (oppWinCount == 1) return new AnalysisResult(MoveType.BLOCKING, oppWins[0]);
+
+        // 3) Atak: NASZA otwarta czwórka (wygrywa szybciej niż ich O4)
+        Move bestO4 = null;
+        Move bestDouble3 = null;
+        int n = board.size();
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) {
+                if (!board.isEmpty(r, c)) continue;
+                board.set(r, c, mine);
+                int nextWins = countNonNull(winningMoves(board, mine, 3));
+                if (nextWins >= 2) {
+                    Move m = new Move(new Position(c, r), mine);
+                    bestO4 = TieBreaker.better(board, bestO4, m);
+                } else {
+                    int d3 = countDisjointOpenThrees(board, mine);
+                    if (d3 >= 2) {
+                        Move m2 = new Move(new Position(c, r), mine);
+                        bestDouble3 = TieBreaker.better(board, bestDouble3, m2);
+                    }
+                }
+                board.set(r, c, Mark.NULL);
+            }
+        }
+        if (bestO4 != null) return new AnalysisResult(MoveType.CREATE_OPEN_FOUR, bestO4);
+
+        // 4) Obrona: ich tworzenie O4 — próbujemy pojedynczym blokiem zneutralizować wszystkie
+        Move o4Block = blockOpenFourIfPossible(board, opp, mine);
+        if (o4Block != null) return new AnalysisResult(MoveType.BLOCKING, o4Block);
+        // jeśli nadal istnieje wiele niezależnych tworzeń O4, po rozważeniu naszego O4 powyżej,
+        // nie ma realnej obrony → rezygnacja
+        if (collectO4Creation(board, opp, null, null) >= 2) return AnalysisResult.resign();
+
+        // 5) Nasza podwójna trójka (wolniejsza niż O4)
+        if (bestDouble3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
+
+        // 6) Neutralny
+        Move neutral = pickNeutral(board, mine);
+        return new AnalysisResult(MoveType.ANY, neutral);
     }
 
-    public void analyze(Board board) throws TheWinnerIsException, WrongBoardStateException {
-        boolean playerAlreadyWon = false;
-        boolean opponentAlreadyWon = false;
+    private void validateBoard(Board b) throws WrongBoardStateException {
+//        int xs = b.count(Mark.CROSS); int os = b.count(Mark.NOUGHT);
+//        int diff = xs - os; if (diff < 0) diff = -diff; if (diff > 1) throw new WrongBoardStateException();
+    }
 
-        Map<String, Integer> threatCounter = new HashMap<>(); // key: x:y, value: count
+    private Mark detectWinner(Board b) throws WrongBoardStateException {
+        boolean x = hasFive(b, Mark.CROSS);
+        boolean o = hasFive(b, Mark.NOUGHT);
+        if (x && o) throw new WrongBoardStateException();
+        if (x) return Mark.CROSS;
+        if (o) return Mark.NOUGHT;
+        return null;
+    }
 
-        List<Line> lines = board.getAllLines();
-        for (int l = 0; l < lines.size(); l++) {
-            List<Cell> cells = lines.get(l).getCells();
-            for (int i = 0; i <= cells.size() - 5; i++) {
-                int playerCount = 0, opponentCount = 0, emptyCount = 0;
-                Cell lastEmpty = null;
-                List<Cell> emptyCells = new ArrayList<>();
-
-                for (int j = 0; j < 5; j++) {
-                    Cell c = cells.get(i + j);
-                    if (c.getSymbol() == playerSymbol) playerCount++;
-                    else if (c.getSymbol() == opponentSymbol) opponentCount++;
-                    else {
-                        emptyCount++;
-                        lastEmpty = c;
-                        emptyCells.add(c);
-                    }
+    private boolean hasFive(Board b, Mark m) {
+        int n = b.size();
+        int r, c, i;
+        for (r = 0; r < n; r++)
+            for (c = 0; c < n; c++)
+                if (b.get(r, c) == m) {
+                    for (i = 0; i < AXES.length; i++) if (b.runLengthThrough(r, c, AXES[i], m) >= 5) return true;
                 }
+        return false;
+    }
 
-                // Zwycięstwo (nie wolno kontynuować)
-                if (playerCount >= 5) {
-                    playerAlreadyWon = true;
-//                    throw new TheWinnerIsException(playerSymbol);
-                }
-                if (opponentCount >= 5) {
-                    opponentAlreadyWon = true;
-//                    throw new TheWinnerIsException(opponentSymbol);
-                }
-
-                if (playerCount == 4 && emptyCount == 1) {
-                    publisher.publishMove(lastEmpty, MoveType.WINNING);
-                } else if (opponentCount == 4 && emptyCount == 1) {
-                    publisher.publishMove(lastEmpty, MoveType.BLOCKING);
-                } else if (playerCount == 3 && emptyCount == 2 && isOpenEnds(cells, i, i + 4)) {
-                    publisher.publishMove(lastEmpty, MoveType.OPEN_FOUR);
-                    for (Cell ec : emptyCells) {
-                        String key = ec.getRow() + ":" + ec.getCol();
-                        threatCounter.put(key, threatCounter.getOrDefault(key, 0) + 1);
-                        publisher.publishMove(ec, MoveType.OPEN_FOUR);
-                    }
-
-                }
-
-            }
-            // 2) Okna długości 5 – wykrywanie OPEN_FOUR przeciwnika: E O O O E,
-            for (int i = 0; i <= cells.size() - 5; i++) {
-                Cell c0 = cells.get(i), c4 = cells.get(i + 4);
-                if (c0.isEmpty() && c4.isEmpty()) {
-                    boolean oppFour = true;
-                    for (int k = 1; k <= 3; k++) {
-                        if (cells.get(i + k).getSymbol() != opponentSymbol) {
-                            oppFour = false;
+    private Move[] winningMoves(Board b, Mark who, int limit) {
+        int n = b.size();
+        Move[] out = new Move[limit];
+        int found = 0;
+        int r, c, i;
+        for (r = 0; r < n && found < limit; r++)
+            for (c = 0; c < n && found < limit; c++)
+                if (b.isEmpty(r, c)) {
+                    b.set(r, c, who);
+                    boolean win = false;
+                    for (i = 0; i < AXES.length; i++)
+                        if (b.runLengthThrough(r, c, AXES[i], who) >= 5) {
+                            win = true;
                             break;
                         }
+                    b.set(r, c, Mark.NULL);
+                    if (win) {
+                        out[found] = new Move(new Position(c, r), who);
+                        found++;
                     }
-                    if (oppFour) {
-                        // Musimy blokować – oba końce są kandydatami BLOCKING
-                        publisher.publishMove(c0, MoveType.BLOCKING);
-                        publisher.publishMove(c4, MoveType.BLOCKING);
+                }
+        return out;
+    }
+
+    private int countNonNull(Move[] arr) {
+        int k = 0, i;
+        for (i = 0; i < arr.length; i++) if (arr[i] != null) k++;
+        return k;
+    }
+
+    private int countDisjointOpenThrees(Board b, Mark mine) {
+        int n = b.size();
+        int r, c, ai;
+        int count = 0;
+        Point a1 = null, a2 = null;
+        for (r = 0; r < n; r++)
+            for (c = 0; c < n; c++)
+                if (b.get(r, c) == mine) {
+                    for (ai = 0; ai < AXES.length; ai++) {
+                        Direction d = AXES[ai];
+                        int len = b.runLengthThrough(r, c, d, mine);
+                        if (len == 3) {
+                            Point[] ends = b.endsOfRun(r, c, d, mine);
+                            Point e1 = ends[0], e2 = ends[1];
+                            boolean ok1 = e1 != null && b.isEmpty(e1.r, e1.c);
+                            boolean ok2 = e2 != null && b.isEmpty(e2.r, e2.c);
+                            if (ok1 && ok2) {
+                                if (count == 0) {
+                                    a1 = e1;
+                                    a2 = e2;
+                                    count++;
+                                } else {
+                                    if (!same(e1, a1) && !same(e1, a2) && !same(e2, a1) && !same(e2, a2)) {
+                                        count++;
+                                        return count;
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+        return count;
+    }
+
+    private boolean same(Point p, Point q) {
+        if (p == null || q == null) return false;
+        return p.r == q.r && p.c == q.c;
+    }
+
+    // === O4 defense helpers ===
+    // Zbiera pola, na których przeciwnik po zagraniu będzie miał >=2 natychmiastowe wygrane.
+    private int collectO4Creation(Board b, Mark opp, int[] rs, int[] cs) {
+        int n = b.size(), cnt = 0;
+        int r, c;
+        for (r = 0; r < n; r++)
+            for (c = 0; c < n; c++)
+                if (b.isEmpty(r, c)) {
+                    b.set(r, c, opp);
+                    int wins = countNonNull(winningMoves(b, opp, 3));
+                    b.set(r, c, Mark.NULL);
+                    if (wins >= 2) {
+                        if (rs != null) {
+                            rs[cnt] = r;
+                            cs[cnt] = c;
+                        }
+                        cnt++;
+                    }
+                }
+        return cnt;
+    }
+
+
+
+    // Próbujemy pojedynczym ruchem (naszym) wyzerować wszystkie ich możliwości utworzenia O4.
+    private Move blockOpenFourIfPossible(Board b, Mark opp, Mark me) {
+        int n = b.size();
+        int[] rr = new int[n * n], cc = new int[n * n];
+        int k = collectO4Creation(b, opp, rr, cc);
+        if (k == 0) return null;
+        if (k == 1) return new Move(new Position(cc[0], rr[0]), me);
+        for (int i = 0; i < k; i++) {
+            int br = rr[i], bc = cc[i];
+            b.set(br, bc, me);
+            int remain = collectO4Creation(b, opp, null, null);
+            b.set(br, bc, Mark.NULL);
+            if (remain == 0) {
+                return new Move(new Position(bc, br), me);
+            }
+        }
+        return null;
+    }
+
+    /** Neutral move:
+     *  prefer squares adjacent to the largest number of our stones (local support),
+     *  then tie-break by closeness to center. Falls back to board center.
+     *  This avoids playing weak extensions like "...oooA" near the edge (QA#19).
+     */
+    private Move pickNeutral(Board b, Mark mine) {
+        int n = b.size();
+        Move best = null;
+        int bestAdj = -1;
+        int bestDist = Integer.MAX_VALUE;
+
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) {
+                if (!b.isEmpty(r, c)) continue;
+
+                int adj = countAdjacentMine(b, r, c, mine);
+                if (adj == 0) continue; // prefer to grow existing shapes
+
+                int dist = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
+                if (adj > bestAdj || (adj == bestAdj && dist < bestDist)) {
+                    bestAdj = adj;
+                    bestDist = dist;
+                    best = new Move(new Position(c, r), mine);
                 }
             }
         }
-
-
-        // 3) DOUBLE_THREAT – to pole należy do co najmniej dwóch OPEN_FOUR (naszych)
-        for (Map.Entry<String, Integer> e : threatCounter.entrySet()) {
-            if (e.getValue() >= 2) {
-                String[] p = e.getKey().split(":");
-                Cell c = board.getCell(Integer.parseInt(p[0]), Integer.parseInt(p[1]));
-                if (c != null && c.isEmpty()) publisher.publishMove(c, MoveType.DOUBLE_THREAT);
-            }
-        }
-
-        if (playerAlreadyWon || opponentAlreadyWon) {
-            Mark mark = (playerAlreadyWon) ? playerSymbol : opponentSymbol;
-            throw new TheWinnerIsException(mark);
-        }
-//        if (bothAlreadyWon) {
-//            throw new WrongBoardStateException();
-//        }
+        if (best != null) return best;
+        // If nothing adjacent (e.g., empty board) → pick center
+        return new Move(new Position(n / 2, n / 2), mine);
     }
 
-    private boolean isOpenEnds(List<Cell> cells, int from, int to) {
-        Cell before = (from > 0) ? cells.get(from - 1) : null;
-        Cell after = (to < cells.size() - 1) ? cells.get(to + 1) : null;
-        return (before != null && before.isEmpty()) && (after != null && after.isEmpty());
+    /** Counts how many of our stones are in the 8-neighborhood of (r,c). */
+    private int countAdjacentMine(Board b, int r, int c, Mark mine) {
+        Direction[] dirs = Direction.values();
+        int cnt = 0;
+        for (int i = 0; i < dirs.length; i++) {
+            Point p = b.next(r, c, dirs[i]);
+            if (p == null) continue;
+            if (b.get(p.r, p.c) == mine) cnt++;
+        }
+        return cnt;
+    }
+
+    private boolean hasNeighbor(Board b, int r, int c) {
+        Direction[] dirs = Direction.values();
+        int i;
+        for (i = 0; i < dirs.length; i++) {
+            Point p = b.next(r, c, dirs[i]);
+            if (p == null) continue;
+            if (!b.isEmpty(p.r, p.c)) return true;
+        }
+        return false;
     }
 }

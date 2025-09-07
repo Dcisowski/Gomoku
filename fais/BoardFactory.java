@@ -1,4 +1,3 @@
-interface BoardFactory {
-    Board createBoard(int size);
-    GameNeighborhoodResolver createResolver();
+public interface BoardFactory {
+    Board create(int size);
 }
