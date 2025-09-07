@@ -743,10 +743,10 @@ public class GomokuTests {
         board.set(5, 1, Mark.CROSS);
 
 
-        board.set(4, 6, Mark.NOUGHT);
-        board.set(4, 7, Mark.NOUGHT);
-        board.set(5, 5, Mark.NOUGHT);
-        board.set(6, 5, Mark.NOUGHT);
+        board.set(2, 6, Mark.NOUGHT);
+        board.set(2, 7, Mark.NOUGHT);
+        board.set(3, 5, Mark.NOUGHT);
+        board.set(4, 5, Mark.NOUGHT);
 
         MoveAnalyzer analyzer = new MoveAnalyzer();
         AnalysisResult res = analyzer.analyze(board, Mark.NOUGHT);
@@ -755,6 +755,78 @@ public class GomokuTests {
         assertNotNull(move);
         assertTrue(
                 (move.position().col() == 5 && move.position().row() == 2)
+        );
+
+    }
+    @Test
+    void testNoSpaceNoWin2() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10, false);
+
+        board.set(0, 1, Mark.NOUGHT);
+        board.set(1, 1, Mark.NOUGHT);
+        board.set(3, 1, Mark.NOUGHT);
+
+        board.set(2, 6, Mark.NOUGHT);
+        board.set(2, 7, Mark.NOUGHT);
+        board.set(3, 5, Mark.NOUGHT);
+        board.set(4, 5, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+        AnalysisResult res = analyzer.analyze(board, Mark.NOUGHT);
+        Move move = res.move;
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 5 && move.position().row() == 2)
+        );
+
+    }
+    @Test
+    void testNoSpaceNoWin2BlocDoubleThree() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10, false);
+
+        board.set(0, 1, Mark.NOUGHT);
+        board.set(1, 1, Mark.NOUGHT);
+        board.set(3, 1, Mark.NOUGHT);
+
+        board.set(2, 6, Mark.NOUGHT);
+        board.set(2, 7, Mark.NOUGHT);
+        board.set(3, 5, Mark.NOUGHT);
+        board.set(4, 5, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+        AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
+        Move move = res.move;
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 5 && move.position().row() == 2)
+        );
+
+    }
+    @Test
+    void testNoSurrender() throws TheWinnerIsException, WrongBoardStateException {
+        board = new Board(10, false);
+
+        board.set(2, 9, Mark.CROSS);
+        board.set(2, 7, Mark.NOUGHT);
+
+        board.set(3, 7, Mark.NOUGHT);
+        board.set(3, 8, Mark.CROSS);
+        board.set(3, 9, Mark.NOUGHT);
+
+        board.set(4, 7, Mark.NOUGHT);
+        board.set(4, 8, Mark.NOUGHT);
+
+        board.set(9, 6, Mark.CROSS);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+        AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
+        Move move = res.move;
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 7 && move.position().row() == 5)
         );
 
     }

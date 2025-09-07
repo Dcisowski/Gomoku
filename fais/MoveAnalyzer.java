@@ -53,10 +53,16 @@ public class MoveAnalyzer {
         // nie ma realnej obrony → rezygnacja
         if (collectO4Creation(board, opp, null, null) >= 2) return AnalysisResult.resign();
 
-        // 5) Nasza podwójna trójka (wolniejsza niż O4)
+        Move d3Block = blockLooseDoubleThreeIfPossible(board, opp, mine);
+        if (d3Block != null) return new AnalysisResult(MoveType.BLOCKING, d3Block);
+
+        Move looseD3 = bestLooseDoubleThree(board, mine);
+        if (looseD3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, looseD3);
+
+        // keep the strict double-3 (both open) afterwards:
         if (bestDouble3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
 
-        // 6) Neutralny
+        // then the neutral chooser
         Move neutral = pickNeutral(board, mine);
         return new AnalysisResult(MoveType.ANY, neutral);
     }
@@ -73,6 +79,68 @@ public class MoveAnalyzer {
         if (x) return Mark.CROSS;
         if (o) return Mark.NOUGHT;
         return null;
+    }
+
+    /** Finds a \"looser\" double-3: at least two axes with len>=3,
+     *  where at least one of them is an OPEN-3 (open ends == 2).
+     *  Semi-open 3 (open==1) is allowed for the second axis.
+     *  Fragile edge-4 (len==4 & open==1 & closed side is a border) is ignored.
+     *  Returns the best such move or null if none.
+     */
+    private Move bestLooseDoubleThree(Board b, Mark mine) {
+        int n = b.size();
+        Move best = null;
+
+        int bestOpen3Axes = -1;  // number of axes that become open-3
+        int bestThreatAxes = -1; // axes with len>=3 & open>=1 (excluding fragile edge-4)
+        int bestCenter = Integer.MAX_VALUE;
+
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) {
+                if (!b.isEmpty(r, c)) continue;
+
+                b.set(r, c, mine);
+
+                int open3Axes = 0;
+                int threatAxes = 0;
+
+                for (int i = 0; i < AXES.length; i++) {
+                    Direction d = AXES[i];
+
+                    int len = b.runLengthThrough(r, c, d, mine);
+                    Point[] ends = b.endsOfRun(r, c, d, mine);
+
+                    boolean eA = (ends[0] != null && b.isEmpty(ends[0].r, ends[0].c));
+                    boolean eB = (ends[1] != null && b.isEmpty(ends[1].r, ends[1].c));
+                    int open = (eA ? 1 : 0) + (eB ? 1 : 0);
+
+                    boolean closedIsBorder = (ends[0] == null || ends[1] == null);
+                    boolean fragileEdge4 = (len == 4 && open == 1 && closedIsBorder);
+
+                    if (len >= 3) {
+                        if (open == 2) open3Axes++;
+                        if (open >= 1 && !fragileEdge4) threatAxes++;
+                    }
+                }
+
+                b.set(r, c, Mark.NULL);
+
+                // We require at least two threat axes and at least one open-3 among them.
+                if (threatAxes >= 2 && open3Axes >= 1) {
+                    // tie-break: more open-3 axes, then more threat axes, then closer to center
+                    int center = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
+                    if (open3Axes > bestOpen3Axes
+                            || (open3Axes == bestOpen3Axes && (threatAxes > bestThreatAxes
+                            || (threatAxes == bestThreatAxes && center < bestCenter)))) {
+                        bestOpen3Axes = open3Axes;
+                        bestThreatAxes = threatAxes;
+                        bestCenter = center;
+                        best = new Move(new Position(c, r), mine);
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     private boolean hasFive(Board b, Mark m) {
@@ -198,6 +266,73 @@ public class MoveAnalyzer {
         return null;
     }
 
+    /** Count opponent squares that would create a (loose) double-three if they played there:
+     *  - at least two axes with len >= 3 and open >= 1 (excluding fragile edge-4),
+     *  - at least one of those axes is OPEN-3 (open == 2).
+     *  If rs/cs are not null, fills them with the coordinates of such creation squares.
+     */
+    private int collectLooseD3Creation(Board b, Mark opp, int[] rs, int[] cs) {
+        int n = b.size();
+        int cnt = 0;
+        for (int r = 0; r < n; r++) {
+            for (int c = 0; c < n; c++) {
+                if (!b.isEmpty(r, c)) continue;
+
+                b.set(r, c, opp);
+
+                int open3Axes = 0;
+                int threatAxes = 0;
+
+                for (int i = 0; i < AXES.length; i++) {
+                    Direction d = AXES[i];
+
+                    int len = b.runLengthThrough(r, c, d, opp);
+                    Point[] ends = b.endsOfRun(r, c, d, opp);
+
+                    boolean eA = (ends[0] != null && b.isEmpty(ends[0].r, ends[0].c));
+                    boolean eB = (ends[1] != null && b.isEmpty(ends[1].r, ends[1].c));
+                    int open = (eA ? 1 : 0) + (eB ? 1 : 0);
+
+                    boolean closedIsBorder = (ends[0] == null || ends[1] == null);
+                    boolean fragileEdge4 = (len == 4 && open == 1 && closedIsBorder);
+
+                    if (len >= 3) {
+                        if (open == 2) open3Axes++;
+                        if (open >= 1 && !fragileEdge4) threatAxes++;
+                    }
+                }
+
+                b.set(r, c, Mark.NULL);
+
+                if (threatAxes >= 2 && open3Axes >= 1) {
+                    if (rs != null) { rs[cnt] = r; cs[cnt] = c; }
+                    cnt++;
+                }
+            }
+        }
+        return cnt;
+    }
+
+    /** Try to block opponent's loose double-three with a single move at the creation square.
+     *  If there are multiple creation squares, try placing our mark on one of them and
+     *  see if that eliminates all such creations; if yes, return that block.
+     */
+    private Move blockLooseDoubleThreeIfPossible(Board b, Mark opp, Mark me) {
+        int n = b.size();
+        int[] rr = new int[n * n], cc = new int[n * n];
+        int k = collectLooseD3Creation(b, opp, rr, cc);
+        if (k == 0) return null;
+        if (k == 1) return new Move(new Position(cc[0], rr[0]), me);
+        for (int i = 0; i < k; i++) {
+            int br = rr[i], bc = cc[i];
+            b.set(br, bc, me);
+            int remain = collectLooseD3Creation(b, opp, null, null);
+            b.set(br, bc, Mark.NULL);
+            if (remain == 0) return new Move(new Position(bc, br), me);
+        }
+        return null; // cannot neutralize all with a single block
+    }
+
     /** Neutral move:
      *  prefer squares adjacent to the largest number of our stones (local support),
      *  then tie-break by closeness to center. Falls back to board center.
@@ -207,13 +342,15 @@ public class MoveAnalyzer {
         int n = b.size();
         Move best = null;
 
-        int bestFeasible = -1;      // 1 if some axis can still reach 5
-        int bestFragile = 1;        // 0 is better (not fragile), 1 is fragile edge-four
-        int bestOpen = -1;          // open ends (0..2)
-        int bestLen = 0;            // longest run created
-        int bestFree = -1;          // extra empties beyond the two ends
-        int bestAdj = -1;           // friendly neighbors (8-neighborhood)
-        int bestCenter = Integer.MAX_VALUE;
+        int bestOpen3Axes = -1;   // axes that become OPEN-3 (len>=3 & open==2)
+        int bestThreatAxes = -1;  // axes that become len>=3 & open>=1 (excluding fragile edge-4)
+        int bestFeasible  = -1;   // on best axis: len+free>=5
+        int bestFragile   = 1;    // 0 better (not fragile), 1 fragile edge-4
+        int bestOpen      = -1;   // open ends (0..2) on best axis
+        int bestLen       = 0;    // run length on best axis
+        int bestFree      = -1;   // extra empties beyond ends on best axis
+        int bestAdj       = -1;   // 8-neighborhood friends
+        int bestCenter    = Integer.MAX_VALUE;
 
         for (int r = 0; r < n; r++) {
             for (int c = 0; c < n; c++) {
@@ -221,36 +358,45 @@ public class MoveAnalyzer {
 
                 b.set(r, c, mine);
 
+                int open3Axes = 0;
+                int threatAxes = 0;
+
                 int chosenFeas = 0;
+                int chosenFrag = 1;
                 int chosenOpen = 0;
                 int chosenLen  = 1;
                 int chosenFree = 0;
-                int chosenFrag = 1; // assume fragile until proven otherwise
 
-                // pick the best axis for this square:
                 for (int i = 0; i < AXES.length; i++) {
                     Direction d = AXES[i];
 
                     int len = b.runLengthThrough(r, c, d, mine);
                     Point[] ends = b.endsOfRun(r, c, d, mine);
-                    int open = 0;
+
                     boolean endAEmpty = (ends[0] != null && b.isEmpty(ends[0].r, ends[0].c));
                     boolean endBEmpty = (ends[1] != null && b.isEmpty(ends[1].r, ends[1].c));
-                    if (endAEmpty) open++;
-                    if (endBEmpty) open++;
+                    int open = (endAEmpty ? 1 : 0) + (endBEmpty ? 1 : 0);
 
-                    // count empties continuing beyond each empty end
                     int free = 0;
                     free += countFreeInclusive(b, ends[0], Direction.opposite(d));
                     free += countFreeInclusive(b, ends[1], d);
 
                     int feas = (len + free >= 5) ? 1 : 0;
 
-                    // fragile edge-four: len==4, open==1, and the closed side is off-board
                     boolean closedIsBorder = (ends[0] == null || ends[1] == null);
                     int frag = (len == 4 && open == 1 && closedIsBorder) ? 1 : 0;
 
-                    // choose axis by (feas, !frag, open, len, free)
+                    // counts for global “double-3 / multi-3” preference
+                    if (len >= 3) {
+                        if (open == 2) open3Axes++;
+                        // count as a threat axis if it has at least one open end
+                        // BUT exclude the fragile edge-4 pattern (easy to shut down).
+                        if (open >= 1 && !(len == 4 && open == 1 && closedIsBorder)) {
+                            threatAxes++;
+                        }
+                    }
+
+                    // choose best axis by (feasible, !fragile, open, len, free)
                     if (feas > chosenFeas
                             || (feas == chosenFeas && (frag < chosenFrag
                             || (frag == chosenFrag && (open > chosenOpen
@@ -269,24 +415,28 @@ public class MoveAnalyzer {
 
                 b.set(r, c, Mark.NULL);
 
-                // global choice by (feasible, !fragile, open, len, free, adj, -center)
+                // global comparison
                 boolean better = false;
-                if (chosenFeas > bestFeasible) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag < bestFragile) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen > bestOpen) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen > bestLen) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree > bestFree) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj > bestAdj) better = true;
-                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj == bestAdj && center < bestCenter) better = true;
+                if (open3Axes > bestOpen3Axes) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes > bestThreatAxes) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas > bestFeasible) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag < bestFragile) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen > bestOpen) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen > bestLen) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree > bestFree) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj > bestAdj) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj == bestAdj && center < bestCenter) better = true;
 
                 if (better) {
-                    bestFeasible = chosenFeas;
-                    bestFragile = chosenFrag;
-                    bestOpen = chosenOpen;
-                    bestLen = chosenLen;
-                    bestFree = chosenFree;
-                    bestAdj = adj;
-                    bestCenter = center;
+                    bestOpen3Axes = open3Axes;
+                    bestThreatAxes = threatAxes;
+                    bestFeasible  = chosenFeas;
+                    bestFragile   = chosenFrag;
+                    bestOpen      = chosenOpen;
+                    bestLen       = chosenLen;
+                    bestFree      = chosenFree;
+                    bestAdj       = adj;
+                    bestCenter    = center;
                     best = new Move(new Position(c, r), mine);
                 }
             }
