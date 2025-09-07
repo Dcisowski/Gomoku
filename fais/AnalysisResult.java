@@ -1,7 +1,8 @@
 import fais.zti.oramus.gomoku.Move;
+import fais.zti.oramus.gomoku.ResignException;
 
 public class AnalysisResult {
     public final MoveType type; public final Move move; // null when RESIGN
     public AnalysisResult(MoveType t, Move m){ this.type=t; this.move=m; }
-    public static AnalysisResult resign(){ return new AnalysisResult(MoveType.RESIGN, null); }
+    public static AnalysisResult resign() throws ResignException { throw new ResignException();}
 }

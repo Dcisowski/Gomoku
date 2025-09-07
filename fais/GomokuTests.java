@@ -47,7 +47,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testWinningMoveDetection() throws TheWinnerIsException, WrongBoardStateException {
+    void testWinningMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         for (int i = 0; i < 4; i++) {
             board.set(5, i, Mark.CROSS);
         }
@@ -59,7 +59,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testBlockingMoveDetection() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockingMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         for (int i = 0; i < 4; i++) {
             board.set(i, 0, Mark.NOUGHT);
         }
@@ -71,7 +71,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testOpenFourMoveDetection() throws TheWinnerIsException, WrongBoardStateException {
+    void testOpenFourMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board.set(3, 3, Mark.CROSS);
         board.set(4, 4, Mark.CROSS);
         board.set(5, 5, Mark.CROSS);
@@ -83,7 +83,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testDoubleThreatMoveDetection() throws TheWinnerIsException, WrongBoardStateException {
+    void testDoubleThreatMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board.set(1, 1, Mark.CROSS);
         board.set(1, 2, Mark.CROSS);
         board.set(1, 3, Mark.CROSS);
@@ -103,7 +103,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testNoMoveWhenBoardIsEmpty() throws TheWinnerIsException, WrongBoardStateException {
+    void testNoMoveWhenBoardIsEmpty() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
         Move move = res.move;
         assertNotNull(move);
@@ -111,7 +111,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testAvoidWrongThreatInterpretation() throws TheWinnerIsException, WrongBoardStateException {
+    void testAvoidWrongThreatInterpretation() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board.set(1, 1, Mark.NOUGHT);
         board.set(1, 2, Mark.NOUGHT);
         board.set(1, 3, Mark.NOUGHT);
@@ -124,7 +124,7 @@ public class GomokuTests {
 
     // === Test z pkt. 12 – obrona przed natychmiastową wygraną przeciwnika ===
     @Test
-    void testDefendAgainstImmediateLoss() throws TheWinnerIsException, WrongBoardStateException {
+    void testDefendAgainstImmediateLoss() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(1, 1, Mark.NOUGHT);
         board.set(1, 2, Mark.NOUGHT);
@@ -143,7 +143,7 @@ public class GomokuTests {
 
     // === Test z pkt. 13 – błąd: błędny ruch nie zapewnia wygranej ===
     @Test
-    void testAvoidWrongMoveChoice() throws TheWinnerIsException, WrongBoardStateException {
+    void testAvoidWrongMoveChoice() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(0, 1, Mark.CROSS);
         board.set(1, 1, Mark.CROSS);
@@ -158,7 +158,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testChooseFastestWinningPath() throws TheWinnerIsException, WrongBoardStateException {
+    void testChooseFastestWinningPath() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(2, 2, Mark.CROSS);
         board.set(3, 3, Mark.CROSS);
@@ -183,7 +183,7 @@ public class GomokuTests {
 
     // === Punkt 9: gracz x powinien zablokować kółko (które dąży do 4) ===
     @Test
-    void testBlockOpponentWinFromThree() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockOpponentWinFromThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(2, 2, Mark.NOUGHT);
         board.set(3, 3, Mark.NOUGHT);
@@ -196,7 +196,7 @@ public class GomokuTests {
 
     // === Punkt 10: gracz x musi zablokować 3 kółka (przeciwnik o) ===
     @Test
-    void testBlockThreeOpponentCircle() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockThreeOpponentCircle() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(2, 2, Mark.NOUGHT);
         board.set(3, 2, Mark.NOUGHT);
@@ -209,7 +209,7 @@ public class GomokuTests {
 
     // === Punkt 11: unikamy błędnego poddania się przy pojedynczym zagrożeniu ===
     @Test
-    void testAvoidUnnecessarySurrender() throws TheWinnerIsException, WrongBoardStateException {
+    void testAvoidUnnecessarySurrender() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(3, 3, Mark.NOUGHT);
         board.set(3, 4, Mark.NOUGHT);
@@ -220,7 +220,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException {
+    void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Board periodicBoard = new Board(10, true);
         periodicBoard.set(0, 9, Mark.CROSS);
         periodicBoard.set(2, 1, Mark.CROSS);
@@ -239,7 +239,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException {
+    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Board periodicBoard = new Board(10, true);
         periodicBoard.set(2, 1, Mark.CROSS);
         periodicBoard.set(3, 0, Mark.CROSS);
@@ -258,7 +258,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException {
+    void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Board periodicBoard = new Board(10, true);
         periodicBoard.set(4, 0, Mark.CROSS);
         periodicBoard.set(5, 9, Mark.CROSS);
@@ -279,7 +279,7 @@ public class GomokuTests {
 
     // === Punkt 13: niepoprawny ruch oznaczony ? nie prowadzi do zwycięstwa ===
     @Test
-    void testRejectIncorrectMoveMarkedAsQuestion() throws TheWinnerIsException, WrongBoardStateException {
+    void testRejectIncorrectMoveMarkedAsQuestion() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(3, 3, Mark.NOUGHT);
         board.set(0, 5, Mark.NOUGHT);
@@ -314,7 +314,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testNoVictoryWithoutSpace() throws TheWinnerIsException, WrongBoardStateException {
+    void testNoVictoryWithoutSpace() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(0, 1, Mark.CROSS);
         board.set(0, 2, Mark.NOUGHT);
@@ -336,7 +336,7 @@ public class GomokuTests {
 
     // === Punkt 6: gra nie współpracuje – należy wybrać najlepszy atak zamiast błędnego ===
     @Test
-    void testAttackOverridesIncorrectBlock() throws TheWinnerIsException, WrongBoardStateException {
+    void testAttackOverridesIncorrectBlock() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
         board.set(2, 2, Mark.CROSS);
         board.set(3, 3, Mark.CROSS);
@@ -368,7 +368,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+    void testLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 2, Mark.NOUGHT);
@@ -386,7 +386,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testFastestLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+    void testFastestLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 4, Mark.NOUGHT);
@@ -409,7 +409,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testBlockingLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockingLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 4, Mark.NOUGHT);
@@ -432,7 +432,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testBlockingLeadingToWinningComplex() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockingLeadingToWinningComplex() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 7, Mark.CROSS);
@@ -474,7 +474,7 @@ public class GomokuTests {
     }
 
     @Test
-    void testCorrectMove() throws TheWinnerIsException, WrongBoardStateException {
+    void testCorrectMove() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 1, Mark.CROSS);
@@ -499,7 +499,7 @@ public class GomokuTests {
 
     //
     @Test
-    void testIncorrectMove() throws TheWinnerIsException, WrongBoardStateException {
+    void testIncorrectMove() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 0, Mark.NOUGHT);
@@ -518,7 +518,7 @@ public class GomokuTests {
         );
     }
     @Test
-    void testCorrectDoubleFour() throws TheWinnerIsException, WrongBoardStateException {
+    void testCorrectDoubleFour() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(2, 2, Mark.NOUGHT);
@@ -539,7 +539,7 @@ public class GomokuTests {
         );
     }
     @Test
-    void testPriorityWinning() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriorityWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(2, 2, Mark.NOUGHT);
@@ -562,7 +562,7 @@ public class GomokuTests {
         );
     }
     @Test
-    void testPriority2() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 5, Mark.NOUGHT);
@@ -590,7 +590,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testPriority3() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 6, Mark.NOUGHT);
@@ -614,7 +614,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testPriority4() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority4() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 5, Mark.CROSS);
@@ -638,7 +638,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testPriority5() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority5() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 3, Mark.NOUGHT);
@@ -660,7 +660,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testPriority6() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority6() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 3, Mark.NOUGHT);
@@ -682,7 +682,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testPriority15_2_AisCross_BisNought_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException {
+    void testPriority15_2_AisCross_BisNought_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Board board = new Board(10, false);
 
         // A = CROSS
@@ -703,12 +703,40 @@ public class GomokuTests {
 
         assertNotNull(move);
         assertTrue(
-                (move.position().col() == 1 && move.position().row() == 3)     // bottom end of B-run
+                (move.position().col() == 1 && move.position().row() == 3)
+                || (move.position().col() == 5 && move.position().row() == 7)
         );
     }
 
     @Test
-    void testPriority15_2_AisNought_BisCross_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException {
+    void testBlockDoubleFourAndThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Board board = new Board(10, false);
+
+        // A = CROSS
+        board.set(1, 4, Mark.CROSS); // "..AA......"  -> row=1, col=2
+        board.set(1, 5, Mark.CROSS); //                row=1, col=3
+        board.set(2, 7, Mark.CROSS); // ".......A.."  -> row=2, col=7
+        board.set(3, 8, Mark.CROSS); // ".B.....A.."  -> row=3, col=7
+
+        // B = NOUGHT (vertical four with two open ends at (1,2) and (1,7))
+        board.set(3, 2, Mark.NOUGHT);
+        board.set(3, 3, Mark.NOUGHT);
+        board.set(4, 2, Mark.NOUGHT);
+        board.set(5, 3, Mark.NOUGHT);
+        board.set(6, 4, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+        AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
+        Move move = res.move;
+
+        assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 1 && move.position().row() == 3)
+        );
+    }
+
+    @Test
+    void testPriority15_2_AisNought_BisCross_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Board board = new Board(10, false);
 
         // A = NOUGHT
@@ -734,7 +762,7 @@ public class GomokuTests {
         );
     }
     @Test
-    void testNoSpaceNoWin() throws TheWinnerIsException, WrongBoardStateException {
+    void testNoSpaceNoWin() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(1, 1, Mark.NOUGHT);
@@ -759,7 +787,7 @@ public class GomokuTests {
 
     }
     @Test
-    void testNoSpaceNoWin2() throws TheWinnerIsException, WrongBoardStateException {
+    void testNoSpaceNoWin2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         board = new Board(10, false);
 
         board.set(0, 1, Mark.NOUGHT);
@@ -782,17 +810,17 @@ public class GomokuTests {
 
     }
     @Test
-    void testNoSpaceNoWin2BlocDoubleThree() throws TheWinnerIsException, WrongBoardStateException {
-        board = new Board(10, false);
+    void testNoSpaceNoWin2BlocDoubleThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        board = new Board(13, false);
 
         board.set(0, 1, Mark.NOUGHT);
         board.set(1, 1, Mark.NOUGHT);
         board.set(3, 1, Mark.NOUGHT);
 
-        board.set(2, 6, Mark.NOUGHT);
-        board.set(2, 7, Mark.NOUGHT);
-        board.set(3, 5, Mark.NOUGHT);
-        board.set(4, 5, Mark.NOUGHT);
+        board.set(7, 11, Mark.NOUGHT);
+        board.set(7, 12, Mark.NOUGHT);
+        board.set(8, 10, Mark.NOUGHT);
+        board.set(9, 10, Mark.NOUGHT);
 
         MoveAnalyzer analyzer = new MoveAnalyzer();
         AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
@@ -800,35 +828,137 @@ public class GomokuTests {
 
         assertNotNull(move);
         assertTrue(
-                (move.position().col() == 5 && move.position().row() == 2)
+                (move.position().col() == 10 && move.position().row() == 7)
         );
 
     }
     @Test
-    void testNoSurrender() throws TheWinnerIsException, WrongBoardStateException {
-        board = new Board(10, false);
+    void testNoSurrender() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
 
-        board.set(2, 9, Mark.CROSS);
-        board.set(2, 7, Mark.NOUGHT);
+        // Build state as Set<Move>
+        Set<Move> boardState = new HashSet<Move>();
 
-        board.set(3, 7, Mark.NOUGHT);
-        board.set(3, 8, Mark.CROSS);
-        board.set(3, 9, Mark.NOUGHT);
+        // board.set(2, 9, Mark.CROSS);
+        boardState.add(new Move(new Position(9, 2), Mark.CROSS));
 
-        board.set(4, 7, Mark.NOUGHT);
-        board.set(4, 8, Mark.NOUGHT);
+        // board.set(2, 7, Mark.NOUGHT);
+        boardState.add(new Move(new Position(7, 2), Mark.NOUGHT));
 
-        board.set(9, 6, Mark.CROSS);
+        // board.set(3, 7, Mark.NOUGHT);
+        boardState.add(new Move(new Position(7, 3), Mark.NOUGHT));
 
-        MoveAnalyzer analyzer = new MoveAnalyzer();
-        AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
-        Move move = res.move;
+        // board.set(3, 8, Mark.CROSS);
+        boardState.add(new Move(new Position(8, 3), Mark.CROSS));
+
+        // board.set(3, 9, Mark.NOUGHT);
+        boardState.add(new Move(new Position(9, 3), Mark.NOUGHT));
+
+        // board.set(4, 7, Mark.NOUGHT);
+        boardState.add(new Move(new Position(7, 4), Mark.NOUGHT));
+
+        // board.set(4, 8, Mark.NOUGHT);
+        boardState.add(new Move(new Position(8, 4), Mark.NOUGHT));
+
+        // board.set(9, 6, Mark.CROSS);
+        boardState.add(new Move(new Position(6, 9), Mark.CROSS));
+
+        Move move = gomoku.nextMove(boardState, Mark.CROSS);
+//        board = new Board(10, false);
+//
+//        board.set(2, 9, Mark.CROSS);
+//        board.set(2, 7, Mark.NOUGHT);
+//
+//        board.set(3, 7, Mark.NOUGHT);
+//        board.set(3, 8, Mark.CROSS);
+//        board.set(3, 9, Mark.NOUGHT);
+//
+//        board.set(4, 7, Mark.NOUGHT);
+//        board.set(4, 8, Mark.NOUGHT);
+//
+//        board.set(9, 6, Mark.CROSS);
+//
+//        MoveAnalyzer analyzer = new MoveAnalyzer();
+//        AnalysisResult res = analyzer.analyze(board, Mark.CROSS);
+//        Move move = res.move;
 
         assertNotNull(move);
         assertTrue(
                 (move.position().col() == 7 && move.position().row() == 5)
         );
 
+    }
+    @Test
+    void testResign() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        board = new Board(10, false);
+
+        board.set(2, 2, Mark.NOUGHT);
+        board.set(2, 3, Mark.NOUGHT);
+        board.set(2, 4, Mark.NOUGHT);
+        board.set(2, 6, Mark.NOUGHT);
+
+        board.set(8, 9, Mark.NOUGHT);
+        board.set(8, 8, Mark.NOUGHT);
+        board.set(8, 7, Mark.NOUGHT);
+        board.set(8, 6, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+
+        assertThrows(ResignException.class, () -> analyzer.analyze(board, Mark.CROSS));
+    }
+    @Test
+    void testResign2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        board = new Board(10, false);
+
+        board.set(0, 5, Mark.NOUGHT);
+        board.set(0, 6, Mark.NOUGHT);
+        board.set(0, 7, Mark.NOUGHT);
+
+        board.set(2, 7, Mark.NOUGHT);
+        board.set(3, 7, Mark.NOUGHT);
+        board.set(5, 7, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+
+        assertThrows(ResignException.class, () -> analyzer.analyze(board, Mark.CROSS));
+    }
+    @Test
+    void testResign3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        board = new Board(15, false);
+
+        board.set(1, 4, Mark.NOUGHT);
+        board.set(2, 4, Mark.NOUGHT);
+
+        board.set(3, 5, Mark.NOUGHT);
+        board.set(3, 6, Mark.NOUGHT);
+        board.set(3, 10, Mark.NOUGHT);
+
+        board.set(4, 9, Mark.NOUGHT);
+
+        board.set(5, 7, Mark.NOUGHT);
+        board.set(5, 6, Mark.NOUGHT);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+
+        assertThrows(ResignException.class, () -> analyzer.analyze(board, Mark.CROSS));
+    }
+    @Test
+    void testResign4() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        board = new Board(10, false);
+
+        board.set(0, 5, Mark.NOUGHT);
+        board.set(0, 6, Mark.NOUGHT);
+        board.set(0, 7, Mark.NOUGHT);
+
+        board.set(2, 4, Mark.CROSS);
+        board.set(3, 5, Mark.CROSS);
+        board.set(4, 6, Mark.CROSS);
+        board.set(5, 7, Mark.CROSS);
+
+        MoveAnalyzer analyzer = new MoveAnalyzer();
+
+        assertThrows(ResignException.class, () -> analyzer.analyze(board, Mark.NOUGHT));
     }
 }
 

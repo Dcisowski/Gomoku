@@ -4,8 +4,7 @@ public class MoveAnalyzer {
     private static final Direction[] AXES = new Direction[]{Direction.E, Direction.S, Direction.SE, Direction.NE};
 
     public AnalysisResult analyze(Board board, Mark toMove)
-            throws WrongBoardStateException, TheWinnerIsException {
-        validateBoard(board);
+            throws WrongBoardStateException, TheWinnerIsException, ResignException {
         Mark winner = detectWinner(board);
         if (winner != null) throw new TheWinnerIsException(winner);
 
@@ -47,30 +46,43 @@ public class MoveAnalyzer {
         if (bestO4 != null) return new AnalysisResult(MoveType.CREATE_OPEN_FOUR, bestO4);
 
         // 4) Obrona: ich tworzenie O4 — próbujemy pojedynczym blokiem zneutralizować wszystkie
-        Move o4Block = blockOpenFourIfPossible(board, opp, mine);
-        if (o4Block != null) return new AnalysisResult(MoveType.BLOCKING, o4Block);
-        // jeśli nadal istnieje wiele niezależnych tworzeń O4, po rozważeniu naszego O4 powyżej,
-        // nie ma realnej obrony → rezygnacja
-        if (collectO4Creation(board, opp, null, null) >= 2) return AnalysisResult.resign();
+        int initialO4 = collectO4Creation(board, opp, null, null);
+        int initialD3 = collectLooseD3Creation(board, opp, null, null);
+        int initialAll = initialO4 + initialD3;
 
-        Move d3Block = blockLooseDoubleThreeIfPossible(board, opp, mine);
-        if (d3Block != null) return new AnalysisResult(MoveType.BLOCKING, d3Block);
+        if (initialAll > 0) {
+            Move bestBlock = bestUnifiedThreatBlock(board, opp, mine); // już masz tę metodę
+            if (bestBlock != null) {
+                // symulujemy najlepszy blok i liczymy, co zostaje
+                board.set(bestBlock.position().row(), bestBlock.position().col(), mine);
+                int remainO4 = collectO4Creation(board, opp, null, null);
+                int remainD3 = collectLooseD3Creation(board, opp, null, null);
+                board.set(bestBlock.position().row(), bestBlock.position().col(), Mark.NULL);
 
+                int remainAll = remainO4 + remainD3;
+
+                // jeśli na starcie były >=2 groźby i po JEDNYM bloku nadal coś zostaje -> poddanie
+                if (initialAll >= 2 && remainAll >= 1) throw new ResignException();
+
+                // w przeciwnym razie gramy blok
+                return new AnalysisResult(MoveType.BLOCKING, bestBlock);
+            } else {
+                // są groźby, ale nie ma żadnego bloku -> poddanie
+                if (initialAll >= 2) throw new ResignException();
+            }
+        }
+
+
+        //  (then continue as before:)
         Move looseD3 = bestLooseDoubleThree(board, mine);
         if (looseD3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, looseD3);
-
-        // keep the strict double-3 (both open) afterwards:
         if (bestDouble3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
-
-        // then the neutral chooser
         Move neutral = pickNeutral(board, mine);
         return new AnalysisResult(MoveType.ANY, neutral);
+
     }
 
-    private void validateBoard(Board b) throws WrongBoardStateException {
-//        int xs = b.count(Mark.CROSS); int os = b.count(Mark.NOUGHT);
-//        int diff = xs - os; if (diff < 0) diff = -diff; if (diff > 1) throw new WrongBoardStateException();
-    }
+
 
     private Mark detectWinner(Board b) throws WrongBoardStateException {
         boolean x = hasFive(b, Mark.CROSS);
@@ -137,6 +149,65 @@ public class MoveAnalyzer {
                         bestCenter = center;
                         best = new Move(new Position(c, r), mine);
                     }
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Pick a single blocking move that minimizes the total remaining opponent threats:
+     *  O4-creation + loose double-three creation. Evaluates only creation squares (O4 ∪ D3).
+     *  Returns null if there are no such threats.
+     */
+    private Move bestUnifiedThreatBlock(Board b, Mark opp, Mark me) {
+        int n = b.size();
+
+        // collect O4 creation squares
+        int[] rO4 = new int[n*n], cO4 = new int[n*n];
+        int kO4 = collectO4Creation(b, opp, rO4, cO4);
+
+        // collect loose D3 creation squares
+        int[] rD3 = new int[n*n], cD3 = new int[n*n];
+        int kD3 = collectLooseD3Creation(b, opp, rD3, cD3);
+
+        if (kO4 + kD3 == 0) return null;
+
+        // build candidate set = union of creation squares
+        // (use a simple visited grid to avoid duplicates)
+        boolean[][] vis = new boolean[n][n];
+        int i;
+        for (i = 0; i < kO4; i++) vis[rO4[i]][cO4[i]] = true;
+        for (i = 0; i < kD3; i++) vis[rD3[i]][cD3[i]] = true;
+
+        // evaluate each candidate by remaining threats; tie-break: fewer remaining O4,
+        // then fewer total threats, then closer to center.
+        int bestRemainO4 = Integer.MAX_VALUE;
+        int bestRemainAll = Integer.MAX_VALUE;
+        int bestCenter = Integer.MAX_VALUE;
+        Move best = null;
+
+        int r, c;
+        for (r = 0; r < n; r++) {
+            for (c = 0; c < n; c++) {
+                if (!vis[r][c]) continue;
+
+                b.set(r, c, me);
+                int remO4  = collectO4Creation(b, opp, null, null);
+                int remD3  = collectLooseD3Creation(b, opp, null, null);
+                int remAll = remO4 + remD3;
+                int center = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
+                b.set(r, c, Mark.NULL);
+
+                boolean better = false;
+                if (remO4 < bestRemainO4) better = true;
+                else if (remO4 == bestRemainO4 && remAll < bestRemainAll) better = true;
+                else if (remO4 == bestRemainO4 && remAll == bestRemainAll && center < bestCenter) better = true;
+
+                if (better) {
+                    bestRemainO4 = remO4;
+                    bestRemainAll = remAll;
+                    bestCenter = center;
+                    best = new Move(new Position(c, r), me);
                 }
             }
         }
@@ -246,26 +317,6 @@ public class MoveAnalyzer {
     }
 
 
-
-    // Próbujemy pojedynczym ruchem (naszym) wyzerować wszystkie ich możliwości utworzenia O4.
-    private Move blockOpenFourIfPossible(Board b, Mark opp, Mark me) {
-        int n = b.size();
-        int[] rr = new int[n * n], cc = new int[n * n];
-        int k = collectO4Creation(b, opp, rr, cc);
-        if (k == 0) return null;
-        if (k == 1) return new Move(new Position(cc[0], rr[0]), me);
-        for (int i = 0; i < k; i++) {
-            int br = rr[i], bc = cc[i];
-            b.set(br, bc, me);
-            int remain = collectO4Creation(b, opp, null, null);
-            b.set(br, bc, Mark.NULL);
-            if (remain == 0) {
-                return new Move(new Position(bc, br), me);
-            }
-        }
-        return null;
-    }
-
     /** Count opponent squares that would create a (loose) double-three if they played there:
      *  - at least two axes with len >= 3 and open >= 1 (excluding fragile edge-4),
      *  - at least one of those axes is OPEN-3 (open == 2).
@@ -313,25 +364,6 @@ public class MoveAnalyzer {
         return cnt;
     }
 
-    /** Try to block opponent's loose double-three with a single move at the creation square.
-     *  If there are multiple creation squares, try placing our mark on one of them and
-     *  see if that eliminates all such creations; if yes, return that block.
-     */
-    private Move blockLooseDoubleThreeIfPossible(Board b, Mark opp, Mark me) {
-        int n = b.size();
-        int[] rr = new int[n * n], cc = new int[n * n];
-        int k = collectLooseD3Creation(b, opp, rr, cc);
-        if (k == 0) return null;
-        if (k == 1) return new Move(new Position(cc[0], rr[0]), me);
-        for (int i = 0; i < k; i++) {
-            int br = rr[i], bc = cc[i];
-            b.set(br, bc, me);
-            int remain = collectLooseD3Creation(b, opp, null, null);
-            b.set(br, bc, Mark.NULL);
-            if (remain == 0) return new Move(new Position(bc, br), me);
-        }
-        return null; // cannot neutralize all with a single block
-    }
 
     /** Neutral move:
      *  prefer squares adjacent to the largest number of our stones (local support),
@@ -475,14 +507,4 @@ public class MoveAnalyzer {
         return cnt;
     }
 
-    private boolean hasNeighbor(Board b, int r, int c) {
-        Direction[] dirs = Direction.values();
-        int i;
-        for (i = 0; i < dirs.length; i++) {
-            Point p = b.next(r, c, dirs[i]);
-            if (p == null) continue;
-            if (!b.isEmpty(p.r, p.c)) return true;
-        }
-        return false;
-    }
 }
