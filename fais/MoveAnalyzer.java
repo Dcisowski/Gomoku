@@ -206,27 +206,111 @@ public class MoveAnalyzer {
     private Move pickNeutral(Board b, Mark mine) {
         int n = b.size();
         Move best = null;
-        int bestAdj = -1;
-        int bestDist = Integer.MAX_VALUE;
+
+        int bestFeasible = -1;      // 1 if some axis can still reach 5
+        int bestFragile = 1;        // 0 is better (not fragile), 1 is fragile edge-four
+        int bestOpen = -1;          // open ends (0..2)
+        int bestLen = 0;            // longest run created
+        int bestFree = -1;          // extra empties beyond the two ends
+        int bestAdj = -1;           // friendly neighbors (8-neighborhood)
+        int bestCenter = Integer.MAX_VALUE;
 
         for (int r = 0; r < n; r++) {
             for (int c = 0; c < n; c++) {
                 if (!b.isEmpty(r, c)) continue;
 
-                int adj = countAdjacentMine(b, r, c, mine);
-                if (adj == 0) continue; // prefer to grow existing shapes
+                b.set(r, c, mine);
 
-                int dist = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
-                if (adj > bestAdj || (adj == bestAdj && dist < bestDist)) {
+                int chosenFeas = 0;
+                int chosenOpen = 0;
+                int chosenLen  = 1;
+                int chosenFree = 0;
+                int chosenFrag = 1; // assume fragile until proven otherwise
+
+                // pick the best axis for this square:
+                for (int i = 0; i < AXES.length; i++) {
+                    Direction d = AXES[i];
+
+                    int len = b.runLengthThrough(r, c, d, mine);
+                    Point[] ends = b.endsOfRun(r, c, d, mine);
+                    int open = 0;
+                    boolean endAEmpty = (ends[0] != null && b.isEmpty(ends[0].r, ends[0].c));
+                    boolean endBEmpty = (ends[1] != null && b.isEmpty(ends[1].r, ends[1].c));
+                    if (endAEmpty) open++;
+                    if (endBEmpty) open++;
+
+                    // count empties continuing beyond each empty end
+                    int free = 0;
+                    free += countFreeInclusive(b, ends[0], Direction.opposite(d));
+                    free += countFreeInclusive(b, ends[1], d);
+
+                    int feas = (len + free >= 5) ? 1 : 0;
+
+                    // fragile edge-four: len==4, open==1, and the closed side is off-board
+                    boolean closedIsBorder = (ends[0] == null || ends[1] == null);
+                    int frag = (len == 4 && open == 1 && closedIsBorder) ? 1 : 0;
+
+                    // choose axis by (feas, !frag, open, len, free)
+                    if (feas > chosenFeas
+                            || (feas == chosenFeas && (frag < chosenFrag
+                            || (frag == chosenFrag && (open > chosenOpen
+                            || (open == chosenOpen && (len > chosenLen
+                            || (len == chosenLen && free > chosenFree)))))))) {
+                        chosenFeas = feas;
+                        chosenFrag = frag;
+                        chosenOpen = open;
+                        chosenLen  = len;
+                        chosenFree = free;
+                    }
+                }
+
+                int adj = countAdjacentMine(b, r, c, mine);
+                int center = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
+
+                b.set(r, c, Mark.NULL);
+
+                // global choice by (feasible, !fragile, open, len, free, adj, -center)
+                boolean better = false;
+                if (chosenFeas > bestFeasible) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag < bestFragile) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen > bestOpen) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen > bestLen) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree > bestFree) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj > bestAdj) better = true;
+                else if (chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree && adj == bestAdj && center < bestCenter) better = true;
+
+                if (better) {
+                    bestFeasible = chosenFeas;
+                    bestFragile = chosenFrag;
+                    bestOpen = chosenOpen;
+                    bestLen = chosenLen;
+                    bestFree = chosenFree;
                     bestAdj = adj;
-                    bestDist = dist;
+                    bestCenter = center;
                     best = new Move(new Position(c, r), mine);
                 }
             }
         }
         if (best != null) return best;
-        // If nothing adjacent (e.g., empty board) → pick center
         return new Move(new Position(n / 2, n / 2), mine);
+    }
+
+    /** Counts contiguous empty cells starting at 'start' (inclusive) going in 'd'.
+     *  Capped to 4 steps to avoid cycles on torus; enough because we only need up to 4
+     *  additional cells to reach 5-in-a-row.
+     */
+    private int countFreeInclusive(Board b, Point start, Direction d) {
+        if (start == null) return 0;
+        int n = b.size();
+        int cnt = 0;
+        Point p = start;
+        for (int steps = 0; steps < 4 && p != null; steps++) {
+            if (!b.isEmpty(p.r, p.c)) break;
+            cnt++;
+            p = b.next(p.r, p.c, d);
+            if (p != null && p.r == start.r && p.c == start.c) break; // safety on torus
+        }
+        return cnt;
     }
 
     /** Counts how many of our stones are in the 8-neighborhood of (r,c). */
