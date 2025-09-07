@@ -27,13 +27,23 @@ public class Gomoku implements Game {
             }
         }
 
-        // NEW: kolektor decyzji – obserwator (nie zmienia logiki analyze())
+        // >>> POLICY PLUG-IN: kolektor jest JEDYNYM źródłem decyzji
         MoveDecisionCollector collector = new MoveDecisionCollector();
         MoveAnalyzer analyzer = new MoveAnalyzer(collector);
 
+        // analyze() publikuje kandydatów do kolektora i może rzucić RESIGN
         AnalysisResult res = analyzer.analyze(b, nextMoveMark);
-        // Można by porównać z collector.best(), ale zostawiamy wynik analyze() jako źródło prawdy:
-        if(res.type == MoveType.RESIGN) throw new ResignException();
-        return res.move;
+
+        // ostateczna decyzja pochodzi z kolektora
+        Move decided = collector.best();
+        if (decided != null) {
+            return decided;
+        }
+
+        // awaryjny fallback (nie powinien zajść, ale zostawiamy na wszelki wypadek)
+        if(res != null && res.move != null) return res.move;
+
+        // jeśli nic nie ma — to sytuacja błędna; bezpiecznie zasygnalizuj poddanie
+        throw new ResignException();
     }
 }
