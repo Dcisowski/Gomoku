@@ -1,3 +1,3 @@
 public interface BoardFactory {
-    Board create(int size);
+    Board create(int n);
 }

@@ -3,23 +3,51 @@ import fais.zti.oramus.gomoku.*;
 public class MoveAnalyzer {
     private static final Direction[] AXES = new Direction[]{Direction.E, Direction.S, Direction.SE, Direction.NE};
 
+    // === OBSERVER SUPPORT ===
+    private MoveObserver[] observers = new MoveObserver[0];
+    public MoveAnalyzer(){ }
+    public MoveAnalyzer(MoveObserver... obs){
+        if (obs != null) this.observers = obs;
+    }
+    private void notifyCandidate(MoveType t, Move m){
+        int i;
+        for (i = 0; i < observers.length; i++) observers[i].onCandidate(t, m);
+    }
+    // ========================
+
     public AnalysisResult analyze(Board board, Mark toMove)
             throws WrongBoardStateException, TheWinnerIsException, ResignException {
+
         Mark winner = detectWinner(board);
         if (winner != null) throw new TheWinnerIsException(winner);
 
         Mark mine = toMove;
         Mark opp = (toMove == Mark.CROSS ? Mark.NOUGHT : Mark.CROSS);
 
+        // NEW: skan katalogu wzorców — tylko do raportowania przez obserwatora (bez wpływu na wybór ruchu)
+        if (observers != null && observers.length > 0) {
+            PatternEngine pe = new PatternEngine();
+            int i;
+            for (i = 0; i < observers.length; i++) {
+                pe.scan(board, mine, opp, observers[i]);
+            }
+        }
+
         // 1) Nasza wygrana teraz
         Move[] myWins = winningMoves(board, mine, 1);
-        if (myWins[0] != null) return new AnalysisResult(MoveType.WINNING, myWins[0]);
+        if (myWins[0] != null) {
+            notifyCandidate(MoveType.WINNING, myWins[0]);
+            return new AnalysisResult(MoveType.WINNING, myWins[0]);
+        }
 
         // 2) Obrona: natychmiastowe wygrane przeciwnika
         Move[] oppWins = winningMoves(board, opp, 3);
         int oppWinCount = countNonNull(oppWins);
         if (oppWinCount >= 2) return AnalysisResult.resign();
-        if (oppWinCount == 1) return new AnalysisResult(MoveType.BLOCKING, oppWins[0]);
+        if (oppWinCount == 1) {
+            notifyCandidate(MoveType.BLOCKING, oppWins[0]);
+            return new AnalysisResult(MoveType.BLOCKING, oppWins[0]);
+        }
 
         // 3) Atak: NASZA otwarta czwórka (wygrywa szybciej niż ich O4)
         Move bestO4 = null;
@@ -43,17 +71,19 @@ public class MoveAnalyzer {
                 board.set(r, c, Mark.NULL);
             }
         }
-        if (bestO4 != null) return new AnalysisResult(MoveType.CREATE_OPEN_FOUR, bestO4);
+        if (bestO4 != null) {
+            notifyCandidate(MoveType.CREATE_OPEN_FOUR, bestO4);
+            return new AnalysisResult(MoveType.CREATE_OPEN_FOUR, bestO4);
+        }
 
-        // 4) Obrona: ich tworzenie O4 — próbujemy pojedynczym blokiem zneutralizować wszystkie
+        // 4) Unified defense: O4 ∪ loose D3 (Twoja aktualna logika – bez zmian funkcjonalnych)
         int initialO4 = collectO4Creation(board, opp, null, null);
         int initialD3 = collectLooseD3Creation(board, opp, null, null);
         int initialAll = initialO4 + initialD3;
 
         if (initialAll > 0) {
-            Move bestBlock = bestUnifiedThreatBlock(board, opp, mine); // już masz tę metodę
+            Move bestBlock = bestUnifiedThreatBlock(board, opp, mine);
             if (bestBlock != null) {
-                // symulujemy najlepszy blok i liczymy, co zostaje
                 board.set(bestBlock.position().row(), bestBlock.position().col(), mine);
                 int remainO4 = collectO4Creation(board, opp, null, null);
                 int remainD3 = collectLooseD3Creation(board, opp, null, null);
@@ -61,28 +91,33 @@ public class MoveAnalyzer {
 
                 int remainAll = remainO4 + remainD3;
 
-                // jeśli na starcie były >=2 groźby i po JEDNYM bloku nadal coś zostaje -> poddanie
                 if (initialAll >= 2 && remainAll >= 1) throw new ResignException();
 
-                // w przeciwnym razie gramy blok
+                notifyCandidate(MoveType.BLOCKING, bestBlock);
                 return new AnalysisResult(MoveType.BLOCKING, bestBlock);
             } else {
-                // są groźby, ale nie ma żadnego bloku -> poddanie
                 if (initialAll >= 2) throw new ResignException();
             }
         }
 
-
-        //  (then continue as before:)
+        // 5) Luźny double-three → preferujemy atak
         Move looseD3 = bestLooseDoubleThree(board, mine);
-        if (looseD3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, looseD3);
-        if (bestDouble3 != null) return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
+        if (looseD3 != null) {
+            notifyCandidate(MoveType.CREATE_DOUBLE_THREAT, looseD3);
+            return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, looseD3);
+        }
+
+        // 6) Nasz „twardy” double-three
+        if (bestDouble3 != null) {
+            notifyCandidate(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
+            return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
+        }
+
+        // 7) Neutralny
         Move neutral = pickNeutral(board, mine);
+        notifyCandidate(MoveType.ANY, neutral);
         return new AnalysisResult(MoveType.ANY, neutral);
-
     }
-
-
 
     private Mark detectWinner(Board b) throws WrongBoardStateException {
         boolean x = hasFive(b, Mark.CROSS);
@@ -91,6 +126,34 @@ public class MoveAnalyzer {
         if (x) return Mark.CROSS;
         if (o) return Mark.NOUGHT;
         return null;
+    }
+
+    // === Użycie Line (Composite) w 2 miejscach — bez zmiany logiki ===
+    private boolean hasFive(Board b, Mark m) {
+        int n = b.size();
+        for (int r = 0; r < n; r++)
+            for (int c = 0; c < n; c++)
+                if (b.get(r, c) == m)
+                    for (int i = 0; i < AXES.length; i++)
+                        if (new Line(b, r, c, AXES[i], m).length() >= 5) return true;
+        return false;
+    }
+
+    private Move[] winningMoves(Board b, Mark who, int limit) {
+        int n = b.size();
+        Move[] out = new Move[limit];
+        int found = 0;
+        for (int r = 0; r < n && found < limit; r++)
+            for (int c = 0; c < n && found < limit; c++)
+                if (b.isEmpty(r, c)) {
+                    b.set(r, c, who);
+                    boolean win = false;
+                    for (int i = 0; i < AXES.length; i++)
+                        if (new Line(b, r, c, AXES[i], who).length() >= 5) { win = true; break; }
+                    b.set(r, c, Mark.NULL);
+                    if (win) out[found++] = new Move(new Position(c, r), who);
+                }
+        return out;
     }
 
     /** Finds a \"looser\" double-3: at least two axes with len>=3,
@@ -214,40 +277,6 @@ public class MoveAnalyzer {
         return best;
     }
 
-    private boolean hasFive(Board b, Mark m) {
-        int n = b.size();
-        int r, c, i;
-        for (r = 0; r < n; r++)
-            for (c = 0; c < n; c++)
-                if (b.get(r, c) == m) {
-                    for (i = 0; i < AXES.length; i++) if (b.runLengthThrough(r, c, AXES[i], m) >= 5) return true;
-                }
-        return false;
-    }
-
-    private Move[] winningMoves(Board b, Mark who, int limit) {
-        int n = b.size();
-        Move[] out = new Move[limit];
-        int found = 0;
-        int r, c, i;
-        for (r = 0; r < n && found < limit; r++)
-            for (c = 0; c < n && found < limit; c++)
-                if (b.isEmpty(r, c)) {
-                    b.set(r, c, who);
-                    boolean win = false;
-                    for (i = 0; i < AXES.length; i++)
-                        if (b.runLengthThrough(r, c, AXES[i], who) >= 5) {
-                            win = true;
-                            break;
-                        }
-                    b.set(r, c, Mark.NULL);
-                    if (win) {
-                        out[found] = new Move(new Position(c, r), who);
-                        found++;
-                    }
-                }
-        return out;
-    }
 
     private int countNonNull(Move[] arr) {
         int k = 0, i;
