@@ -1,8 +1,6 @@
 import fais.zti.oramus.gomoku.Move;
 
 public final class TieBreaker {
-    private TieBreaker() {
-    }
 
     public static Move better(Board b, Move a, Move c) {
         if (a == null) return c;
