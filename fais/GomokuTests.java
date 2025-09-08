@@ -248,28 +248,28 @@ public class GomokuTests {
         assertNotNull(move); // x powinien próbować blokować, nie poddać się
     }
 
-//    @Test
-//    void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
-//        Gomoku gomoku = new Gomoku();
-//        gomoku.size(10);
-//        gomoku.periodicBoundaryConditionsInUse();
-//
-//        Set<Move> periodicboardState = new HashSet<Move>();
-//
-//        periodicboardState.add(new Move(new Position(0, 9), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(2, 1), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(3, 2), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(4, 3), Mark.CROSS));
-//
-//        periodicboardState.add(new Move(new Position(7, 5), Mark.NOUGHT));
-//
-//
-//        Move move = gomoku.nextMove(periodicboardState, Mark.NOUGHT);
-//
-//        assertNotNull(move);
-//        // blokuje wygraną x w trybie periodycznym
-//        assertTrue((move.position().col() == 1 && move.position().row() == 0));
-//    }
+    @Test
+    void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.periodicBoundaryConditionsInUse();
+
+        Set<Move> periodicboardState = new HashSet<Move>();
+
+        periodicboardState.add(new Move(new Position(0, 9), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(2, 1), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(3, 2), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(4, 3), Mark.CROSS));
+
+        periodicboardState.add(new Move(new Position(7, 5), Mark.NOUGHT));
+
+
+        Move move = gomoku.nextMove(periodicboardState, Mark.NOUGHT);
+
+        assertNotNull(move);
+        // blokuje wygraną x w trybie periodycznym
+        assertTrue((move.position().col() == 1 && move.position().row() == 0));
+    }
 
 //    @Test
 //    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
@@ -944,7 +944,7 @@ public class GomokuTests {
     @Test
     void testResign3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
-        gomoku.size(10);
+        gomoku.size(13);
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(1, 4), Mark.NOUGHT));
