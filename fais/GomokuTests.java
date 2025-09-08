@@ -271,52 +271,52 @@ public class GomokuTests {
         assertTrue((move.position().col() == 1 && move.position().row() == 0));
     }
 
-//    @Test
-//    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
-//        Gomoku gomoku = new Gomoku();
-//        gomoku.size(10);
-//        gomoku.periodicBoundaryConditionsInUse();
-//
-//        Set<Move> periodicboardState = new HashSet<Move>();
-//
-//        periodicboardState.add(new Move(new Position(2, 1), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(3, 0), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(4, 9), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(5, 8), Mark.CROSS));
-//
-//        periodicboardState.add(new Move(new Position(7, 5), Mark.CROSS));
-//
-//
-//        Move move = gomoku.nextMove(periodicboardState, Mark.CROSS);
-//
-//        assertNotNull(move);
-//        // blokuje wygraną x w trybie periodycznym
-//        assertTrue((move.position().col() == 1 && move.position().row() == 2) || (move.position().col() == 6 && move.position().row() == 7));
-//    }
+    @Test
+    void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.periodicBoundaryConditionsInUse();
 
-//    @Test
-//    void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
-//        Gomoku gomoku = new Gomoku();
-//        gomoku.size(10);
-//        gomoku.periodicBoundaryConditionsInUse();
-//
-//        Set<Move> periodicboardState = new HashSet<Move>();
-//
-//        periodicboardState.add(new Move(new Position(4, 0), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(5, 9), Mark.CROSS));
-//        periodicboardState.add(new Move(new Position(6, 8), Mark.CROSS));
-//
-//        periodicboardState.add(new Move(new Position(7, 5), Mark.NOUGHT));
-//        periodicboardState.add(new Move(new Position(7, 6), Mark.NOUGHT));
-//        periodicboardState.add(new Move(new Position(7, 4), Mark.NOUGHT));
-//
-//
-//        Move move = gomoku.nextMove(periodicboardState, Mark.CROSS);
-//
-//        assertNotNull(move);
-//        // blokuje wygraną x w trybie periodycznym
-//        assertTrue((move.position().col() == 7 && move.position().row() == 7));
-//    }
+        Set<Move> periodicboardState = new HashSet<Move>();
+
+        periodicboardState.add(new Move(new Position(2, 1), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(3, 0), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(4, 9), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(5, 8), Mark.CROSS));
+
+        periodicboardState.add(new Move(new Position(7, 5), Mark.CROSS));
+
+
+        Move move = gomoku.nextMove(periodicboardState, Mark.CROSS);
+
+        assertNotNull(move);
+        // blokuje wygraną x w trybie periodycznym
+        assertTrue((move.position().col() == 1 && move.position().row() == 2) || (move.position().col() == 6 && move.position().row() == 7));
+    }
+
+    @Test
+    void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.periodicBoundaryConditionsInUse();
+
+        Set<Move> periodicboardState = new HashSet<Move>();
+
+        periodicboardState.add(new Move(new Position(4, 0), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(5, 9), Mark.CROSS));
+        periodicboardState.add(new Move(new Position(6, 8), Mark.CROSS));
+
+        periodicboardState.add(new Move(new Position(7, 5), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(7, 6), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(7, 4), Mark.NOUGHT));
+
+
+        Move move = gomoku.nextMove(periodicboardState, Mark.CROSS);
+
+        assertNotNull(move);
+        // blokuje wygraną x w trybie periodycznym
+        assertTrue((move.position().col() == 7 && move.position().row() == 7));
+    }
 
     // === Punkt 13: niepoprawny ruch oznaczony ? nie prowadzi do zwycięstwa ===
     @Test

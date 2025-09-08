@@ -16,6 +16,9 @@ public class Gomoku implements Game {
         BoardFactory f = periodic ? new PeriodicBoardFactory() : new StandardBoardFactory();
         Board b = f.create(n);
 
+        int numPlayerMoves = 0;
+        int numOpponentMoves = 0;
+
         if(boardState!=null){
             Iterator<Move> it = boardState.iterator();
             while(it.hasNext()){
@@ -24,6 +27,8 @@ public class Gomoku implements Game {
                 if(r<0||r>=n||c<0||c>=n) throw new WrongBoardStateException();
                 if(!b.isEmpty(r,c)) throw new WrongBoardStateException();
                 b.set(r,c, m.mark());
+                if (m.mark() == nextMoveMark) numPlayerMoves++;
+                if (m.mark() != nextMoveMark) numOpponentMoves++;
             }
         }
 
