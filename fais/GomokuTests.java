@@ -69,8 +69,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(5, 5), Mark.CROSS));
 
         boardState.add(new Move(new Position(6, 6), Mark.NOUGHT));
-        boardState.add(new Move(new Position(7, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(8, 8), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
