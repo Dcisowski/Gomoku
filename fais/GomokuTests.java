@@ -62,19 +62,23 @@ public class GomokuTests {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
         gomoku.firstMark(Mark.CROSS);
-        Set<Move> boardState = new HashSet<Move>();
+        Set<Move> boardState = new HashSet<>();
 
         boardState.add(new Move(new Position(3, 3), Mark.CROSS));
         boardState.add(new Move(new Position(4, 4), Mark.CROSS));
         boardState.add(new Move(new Position(5, 5), Mark.CROSS));
 
         boardState.add(new Move(new Position(6, 6), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(8, 8), Mark.NOUGHT));
-        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
-        assertTrue(move.position().col() == 2 || move.position().col() == 6);
+        assertTrue(
+                (move.position().col() == 3 && (move.position().row() == 4 || move.position().row() == 2))
+                || (move.position().col() == 4 && (move.position().row() == 5 || move.position().row() == 3))
+                || (move.position().col() == 5 && (move.position().row() == 6 || move.position().row() == 4))
+                );
         assertTrue(move.position().row() == 2 || move.position().row() == 6);
     }
 
