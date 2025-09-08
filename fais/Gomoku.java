@@ -1,4 +1,3 @@
-// CHANGED: Gomoku.java  (tylko fragment nextMove - wstrzyknięcie kolektora)
 import fais.zti.oramus.gomoku.*;
 import java.util.Iterator;
 import java.util.Set;
@@ -32,22 +31,17 @@ public class Gomoku implements Game {
             }
         }
 
-        // === NOWA WALIDACJA: zgodność liczby ruchów z regułami gry względem 'first' ===
-        int cross = b.count(Mark.CROSS);
-        int nought = b.count(Mark.NOUGHT);
+        int cross = b.countMarks(Mark.CROSS);
+        int nought = b.countMarks(Mark.NOUGHT);
 
         if (first == Mark.CROSS) {
-            // X zaczyna: dozwolone układy to  X==O  lub  X==O+1
             if (nought > cross) throw new WrongBoardStateException();
             if (cross - nought > 1) throw new WrongBoardStateException();
-        } else { // first == Mark.NOUGHT
-            // O zaczyna: dozwolone układy to  O==X  lub  O==X+1
+        } else {
             if (cross > nought) throw new WrongBoardStateException();
             if (nought - cross > 1) throw new WrongBoardStateException();
         }
-        // === koniec walidacji ===
 
-        // >>> POLICY PLUG-IN: kolektor jest JEDYNYM źródłem decyzji
         MoveDecisionCollector collector = new MoveDecisionCollector();
         MoveAnalyzer analyzer = new MoveAnalyzer(collector);
 

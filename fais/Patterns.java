@@ -1,15 +1,8 @@
-// NEW: Patterns.java
-import fais.zti.oramus.gomoku.Mark;
-
-/** Katalog wzorców z dokumentu (wybrane kluczowe).
- *  Uwaga: wzorce „otwartości” bazują na pustych polach po bokach w tym samym oknie.
- */
 public final class Patterns {
     private Patterns(){}
 
     private static final Pattern EMPTY = new PEmpty();
     private static final Pattern MINE  = new PIsMine();
-    private static final Pattern OPP   = new PIsOpp();
 
     /** OPEN FOUR: E MMMM E */
     public static Pattern openFour(){

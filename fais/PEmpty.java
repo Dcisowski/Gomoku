@@ -1,4 +1,3 @@
-// NEW: PEmpty.java
 import fais.zti.oramus.gomoku.Mark;
 
 public final class PEmpty implements Pattern {

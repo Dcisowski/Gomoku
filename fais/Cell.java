@@ -9,11 +9,7 @@ public class Cell{
         this.col = col;
     }
 
-    public void setSymbol(Mark symbol) {
-        this.symbol = symbol;
-    }
 
-    public Mark getSymbol() { return symbol; }
     public boolean isEmpty() { return symbol == Mark.NULL; }
     public int getRow() { return row; }
     public int getCol() { return col; }

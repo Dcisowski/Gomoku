@@ -1,4 +1,3 @@
-// NEW: SeqPattern.java
 import fais.zti.oramus.gomoku.Mark;
 
 public final class SeqPattern implements Pattern {

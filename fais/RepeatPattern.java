@@ -1,4 +1,3 @@
-// NEW: RepeatPattern.java
 import fais.zti.oramus.gomoku.Mark;
 
 public final class RepeatPattern implements Pattern {

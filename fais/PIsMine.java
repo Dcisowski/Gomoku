@@ -1,4 +1,3 @@
-// NEW: PIsMine.java
 import fais.zti.oramus.gomoku.Mark;
 
 public final class PIsMine implements Pattern {

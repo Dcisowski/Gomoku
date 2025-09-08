@@ -1,7 +1,3 @@
-// NEW: MoveDecisionCollector.java
-import fais.zti.oramus.gomoku.Move;
-
-// CHANGED: MoveDecisionCollector.java
 import fais.zti.oramus.gomoku.Move;
 
 public final class MoveDecisionCollector implements MoveObserver {
@@ -34,7 +30,6 @@ public final class MoveDecisionCollector implements MoveObserver {
         return any;
     }
 
-    /** NOWE: typ rekomendacji best() – potrzebne dla policy plug-in. */
     public MoveType bestType() {
         if (win != null) return MoveType.WINNING;
         if (block != null) return MoveType.BLOCKING;
@@ -44,7 +39,6 @@ public final class MoveDecisionCollector implements MoveObserver {
         return null;
     }
 
-    public void clear() { win = block = openFour = doubleThreat = any = null; }
 
     private Move better(Move a, Move b) {
         if (a == null) return b;

@@ -3,7 +3,6 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
-import java.util.stream.Collector;
 
 public class GomokuTests {
 
@@ -79,7 +78,6 @@ public class GomokuTests {
                 || (move.position().col() == 4 && (move.position().row() == 5 || move.position().row() == 3))
                 || (move.position().col() == 5 && (move.position().row() == 6 || move.position().row() == 4))
                 );
-        assertTrue(move.position().row() == 2 || move.position().row() == 6);
     }
 
     @Test

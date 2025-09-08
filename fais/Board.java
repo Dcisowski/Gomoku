@@ -119,10 +119,13 @@ public class Board {
     }
 
 
-    public int count(Mark m) {
+    public int countMarks(Mark m) {
         int cnt = 0;
         int r, c;
-        for (r = 0; r < n; r++) for (c = 0; c < n; c++) if (grid[r][c] == m) cnt++;
+        for (r = 0; r < n; r++)
+            for (c = 0; c < n; c++)
+                if (grid[r][c] == m)
+                    cnt++;
         return cnt;
     }
 }

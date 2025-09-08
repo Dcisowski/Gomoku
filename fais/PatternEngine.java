@@ -1,4 +1,3 @@
-// CHANGED: PatternEngine.java
 import fais.zti.oramus.gomoku.Mark;
 import fais.zti.oramus.gomoku.Move;
 
@@ -10,11 +9,9 @@ public final class PatternEngine {
     public void scan(Board b, Mark mine, Mark opp, MoveObserver obs){
         if (obs == null) return;
 
-        // Dla obu znaków skanujemy OPEN_FOUR i OPEN_THREE.
         scanPattern(b, mine, opp, Patterns.openFour(), obs, MoveType.WINNING, true);
         scanPattern(b, mine, opp, Patterns.openThree(), obs, MoveType.CREATE_OPEN_FOUR, false);
 
-        // Opcjonalnie: broken four jako CREATE_OPEN_FOUR (agresywny kandydat)
         scanPattern(b, mine, opp, Patterns.brokenFour(), obs, MoveType.CREATE_OPEN_FOUR, false);
     }
 
@@ -58,10 +55,6 @@ public final class PatternEngine {
         }
     }
 
-    /** Długość przekątnej od (r0,c0) w kierunku d.
-     *  W trybie periodycznym linia ma długość dokładnie n (torus).
-     *  W trybie nieperiodycznym idziemy do granicy planszy.
-     */
     private int diagonalLength(Board b, int r0, int c0, Direction d, int n){
         if (b.isPeriodic()) return n;
         int len = 1;
