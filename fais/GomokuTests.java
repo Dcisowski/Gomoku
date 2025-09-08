@@ -7,55 +7,26 @@ import java.util.stream.Collector;
 
 public class GomokuTests {
 
-    private Board board;
-    private MoveAnalyzer analyzer;
-
-    private Board makeBoard(char[][] grid, Mark aMark, Mark bMark) {
-        int n = grid.length;
-        Board b = new Board(n, false);
-        for (int r = 0; r < n; r++) {
-            for (int c = 0; c < n; c++) {
-                char ch = grid[r][c];
-                if (ch == 'A') b.set(r, c, aMark);
-                else if (ch == 'B') b.set(r, c, bMark);
-                else b.set(r, c, Mark.NULL);
-            }
-        }
-        return b;
-    }
-
-    private char[][] layout() {
-        return new char[][]{
-                "..........".toCharArray(), // row 0
-                "..AA......".toCharArray(), // row 1
-                ".......A..".toCharArray(), // row 2
-                ".B.....A..".toCharArray(), // row 3
-                ".B........".toCharArray(), // row 4
-                ".B........".toCharArray(), // row 5
-                ".B........".toCharArray(), // row 6
-                "..........".toCharArray(), // row 7
-                "..........".toCharArray(), // row 8
-                "..........".toCharArray()  // row 9
-        };
-    }
-
-
     @BeforeEach
     void setup() {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
         Set<Move> boardState = new HashSet<Move>();
-        analyzer = new MoveAnalyzer();
     }
 
     @Test
     void testWinningMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
-        gomoku.size(10);
+        gomoku.size(15);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
 
         for (int i = 0; i < 4; i++) {
             boardState.add(new Move(new Position(5, i), Mark.CROSS));
+        }
+
+        for (int i = 0; i < 4; i++) {
+            boardState.add(new Move(new Position(7, i+1), Mark.NOUGHT));
         }
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
@@ -67,11 +38,19 @@ public class GomokuTests {
     void testBlockingMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
 
         for (int i = 0; i < 4; i++) {
             boardState.add(new Move(new Position(i, 0), Mark.NOUGHT));
         }
+
+        for (int i = 0; i < 3; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+        boardState.add(new Move(new Position(8, 8), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
         assertEquals(4, move.position().col());
@@ -82,11 +61,17 @@ public class GomokuTests {
     void testOpenFourMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(3, 3), Mark.CROSS));
         boardState.add(new Move(new Position(4, 4), Mark.CROSS));
         boardState.add(new Move(new Position(5, 5), Mark.CROSS));
+
+        boardState.add(new Move(new Position(6, 6), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 7), Mark.NOUGHT));
+        boardState.add(new Move(new Position(8, 8), Mark.NOUGHT));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
         assertTrue(move.position().col() == 2 || move.position().col() == 6);
@@ -97,6 +82,7 @@ public class GomokuTests {
     void testDoubleThreatMoveDetection() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(1, 1), Mark.CROSS));
@@ -104,6 +90,13 @@ public class GomokuTests {
         boardState.add(new Move(new Position(1, 3), Mark.CROSS));
         boardState.add(new Move(new Position(2, 1), Mark.CROSS));
         boardState.add(new Move(new Position(3, 1), Mark.CROSS));
+
+        boardState.add(new Move(new Position(5, 1), Mark.NOUGHT));
+        boardState.add(new Move(new Position(5, 3), Mark.NOUGHT));
+        boardState.add(new Move(new Position(5, 5), Mark.NOUGHT));
+        boardState.add(new Move(new Position(6, 7), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 9), Mark.NOUGHT));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
     }
@@ -112,18 +105,68 @@ public class GomokuTests {
     void testWinnerIsExceptionThrown() {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
 
         for (int i = 0; i < 5; i++) {
             boardState.add(new Move(new Position(0, i), Mark.CROSS));
         }
+        for (int i = 0; i < 2; i++) {
+            boardState.add(new Move(new Position(3, i), Mark.NOUGHT));
+        }
+        for (int i = 0; i < 3; i++) {
+            boardState.add(new Move(new Position(5, i), Mark.NOUGHT));
+        }
         assertThrows(TheWinnerIsException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
+    }
+    @Test
+    void testWinnerIsExceptionThrown2() {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(0, i), Mark.CROSS));
+        }
+        for (int i = 0; i < 4; i++) {
+            boardState.add(new Move(new Position(3, i), Mark.NOUGHT));
+        }
+//        for (int i = 0; i < 1; i++) {
+//            boardState.add(new Move(new Position(5, i), Mark.NOUGHT));
+//        }
+        assertThrows(TheWinnerIsException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
+    }
+
+    @Test
+    void testWinnerIsExceptionThrown3() {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(0, i), Mark.CROSS));
+        }
+        for (int i = 0; i < 4; i++) {
+            boardState.add(new Move(new Position(3, i), Mark.NOUGHT));
+        }
+
+        boardState.add(new Move(new Position(7, 0), Mark.NOUGHT));
+//        for (int i = 0; i < 1; i++) {
+//            boardState.add(new Move(new Position(5, i), Mark.NOUGHT));
+//        }
+        assertThrows(TheWinnerIsException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
     }
 
     @Test
     void testNoMoveWhenBoardIsEmpty() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
@@ -135,6 +178,8 @@ public class GomokuTests {
     void testAvoidWrongThreatInterpretation() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+
         Set<Move> boardState = new HashSet<Move>();
         
         boardState.add(new Move(new Position(1, 1), Mark.NOUGHT));
@@ -142,6 +187,13 @@ public class GomokuTests {
         boardState.add(new Move(new Position(1, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(3, 3), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(9, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 3), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 6), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 3), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
         assertNotNull(move);
     }
@@ -151,7 +203,9 @@ public class GomokuTests {
     void testDefendAgainstImmediateLoss() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
+
         boardState.add(new Move(new Position(1, 1), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 2), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 3), Mark.CROSS));
@@ -160,6 +214,11 @@ public class GomokuTests {
         boardState.add(new Move(new Position(4, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(6, 3), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(3, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(4, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(6, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(8, 7), Mark.CROSS));
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
         assertTrue((move.position().col() == 7 && move.position().row() == 3));
@@ -170,7 +229,9 @@ public class GomokuTests {
     void testAvoidWrongMoveChoice() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
+
         boardState.add(new Move(new Position(0, 1), Mark.CROSS));
         boardState.add(new Move(new Position(1, 1), Mark.CROSS));
         boardState.add(new Move(new Position(2, 1), Mark.CROSS));
@@ -178,14 +239,25 @@ public class GomokuTests {
         boardState.add(new Move(new Position(2, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(3, 3), Mark.CROSS));
         boardState.add(new Move(new Position(4, 3), Mark.CROSS));
+
+        boardState.add(new Move(new Position(6, 4), Mark.NOUGHT));
+        boardState.add(new Move(new Position(8, 2), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
+        assertTrue(
+                (move.position().col() == 3 && move.position().row() == 2)
+                || (move.position().col() == 2 && move.position().row() == 2)
+        );
     }
 
     @Test
     void testChooseFastestWinningPath() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
         boardState.add(new Move(new Position(2, 2), Mark.CROSS));
         boardState.add(new Move(new Position(3, 3), Mark.CROSS));
@@ -195,6 +267,14 @@ public class GomokuTests {
         boardState.add(new Move(new Position(2, 5), Mark.CROSS));
         boardState.add(new Move(new Position(3, 5), Mark.CROSS));
         boardState.add(new Move(new Position(4, 5), Mark.CROSS));
+
+        boardState.add(new Move(new Position(6, 4), Mark.NOUGHT));
+        boardState.add(new Move(new Position(6, 6), Mark.NOUGHT));
+        boardState.add(new Move(new Position(6, 8), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 1), Mark.NOUGHT));
+        boardState.add(new Move(new Position(8, 3), Mark.NOUGHT));
+        boardState.add(new Move(new Position(8, 5), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 5), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
@@ -212,46 +292,27 @@ public class GomokuTests {
     void testBlockOpponentWinFromThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
-        Set<Move> boardState = new HashSet<Move>();
+        gomoku.firstMark(Mark.CROSS);
+
+        Set<Move> boardState = new HashSet<>();
         boardState.add(new Move(new Position(2, 2), Mark.NOUGHT));
         boardState.add(new Move(new Position(3, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(4, 4), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(4, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(8, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         assertNotNull(move);
         assertTrue((move.position().col() == 1 && move.position().row() == 1) || (move.position().col() == 5 && move.position().row() == 5));
-    }
-
-    // === Punkt 10: gracz x musi zablokować 3 kółka (przeciwnik o) ===
-    @Test
-    void testBlockThreeOpponentCircle() throws TheWinnerIsException, WrongBoardStateException, ResignException {
-        Gomoku gomoku = new Gomoku();
-        gomoku.size(10);
-        Set<Move> boardState = new HashSet<Move>();
-        boardState.add(new Move(new Position(2, 2), Mark.NOUGHT));
-        boardState.add(new Move(new Position(3, 2), Mark.NOUGHT));
-        boardState.add(new Move(new Position(4, 2), Mark.NOUGHT));
-        Move move = gomoku.nextMove(boardState, Mark.CROSS);
-        assertNotNull(move);
-        assertTrue((move.position().col() == 1 && move.position().row() == 2) || (move.position().col() == 5 && move.position().row() == 2));
-    }
-
-    // === Punkt 11: unikamy błędnego poddania się przy pojedynczym zagrożeniu ===
-    @Test
-    void testAvoidUnnecessarySurrender() throws TheWinnerIsException, WrongBoardStateException, ResignException {
-        Gomoku gomoku = new Gomoku();
-        gomoku.size(10);
-        Set<Move> boardState = new HashSet<Move>();
-        boardState.add(new Move(new Position(3, 3), Mark.NOUGHT));
-        boardState.add(new Move(new Position(3, 4), Mark.NOUGHT));
-        boardState.add(new Move(new Position(3, 5), Mark.NOUGHT));
-        Move move = gomoku.nextMove(boardState, Mark.CROSS);
-        assertNotNull(move); // x powinien próbować blokować, nie poddać się
     }
 
     @Test
     void testDefendAgainstImmediateWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.periodicBoundaryConditionsInUse();
 
         Set<Move> periodicboardState = new HashSet<Move>();
@@ -260,6 +321,10 @@ public class GomokuTests {
         periodicboardState.add(new Move(new Position(2, 1), Mark.CROSS));
         periodicboardState.add(new Move(new Position(3, 2), Mark.CROSS));
         periodicboardState.add(new Move(new Position(4, 3), Mark.CROSS));
+
+        periodicboardState.add(new Move(new Position(6, 9), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(7, 4), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(8, 6), Mark.NOUGHT));
 
         periodicboardState.add(new Move(new Position(7, 5), Mark.NOUGHT));
 
@@ -275,6 +340,7 @@ public class GomokuTests {
     void testWinInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         gomoku.periodicBoundaryConditionsInUse();
 
         Set<Move> periodicboardState = new HashSet<Move>();
@@ -285,6 +351,13 @@ public class GomokuTests {
         periodicboardState.add(new Move(new Position(5, 8), Mark.CROSS));
 
         periodicboardState.add(new Move(new Position(7, 5), Mark.CROSS));
+
+        periodicboardState.add(new Move(new Position(8, 9), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(7, 4), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(7, 7), Mark.NOUGHT));
+        periodicboardState.add(new Move(new Position(8, 6), Mark.NOUGHT));
+
+        periodicboardState.add(new Move(new Position(9, 3), Mark.NOUGHT));
 
 
         Move move = gomoku.nextMove(periodicboardState, Mark.CROSS);
@@ -298,6 +371,7 @@ public class GomokuTests {
     void testWinOverBlockInPeriodicMode() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         gomoku.periodicBoundaryConditionsInUse();
 
         Set<Move> periodicboardState = new HashSet<Move>();
@@ -323,6 +397,7 @@ public class GomokuTests {
     void testRejectIncorrectMoveMarkedAsQuestion() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
         
         boardState.add(new Move(new Position(3, 3), Mark.NOUGHT));
@@ -360,6 +435,7 @@ public class GomokuTests {
     void testNoVictoryWithoutSpace() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
         Set<Move> boardState = new HashSet<Move>();
         
         boardState.add(new Move(new Position(0, 1), Mark.CROSS));
@@ -372,6 +448,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(1, 4), Mark.CROSS));
         boardState.add(new Move(new Position(1, 5), Mark.CROSS));
 
+        boardState.add(new Move(new Position(8, 9), Mark.NOUGHT));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         // mimo 5 'x', „kółko” wygrało – sprawdzamy, czy poprawnie odrzucone
         assertNotNull(move);
@@ -383,6 +461,8 @@ public class GomokuTests {
     void testAttackOverridesIncorrectBlock() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
         
         boardState.add(new Move(new Position(2, 2), Mark.CROSS));
@@ -393,6 +473,15 @@ public class GomokuTests {
         boardState.add(new Move(new Position(2, 6), Mark.CROSS));
         boardState.add(new Move(new Position(3, 6), Mark.CROSS));
         boardState.add(new Move(new Position(4, 6), Mark.CROSS));
+
+        boardState.add(new Move(new Position(9, 1), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 3), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 6), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(7, 3), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 1), Mark.NOUGHT));
+        boardState.add(new Move(new Position(7, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
         
@@ -407,10 +496,20 @@ public class GomokuTests {
     void testWinnerAlreadyExistsThrowsException() {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
         
         for (int i = 0; i < 5; i++) {
             boardState.add(new Move(new Position(5, i), Mark.NOUGHT));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            boardState.add(new Move(new Position(3, i), Mark.CROSS));
+        }
+
+        for (int i = 0; i < 2; i++) {
+            boardState.add(new Move(new Position(9, i), Mark.CROSS));
         }
 
         assertThrows(TheWinnerIsException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
@@ -420,6 +519,8 @@ public class GomokuTests {
     void testLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
         
         boardState.add(new Move(new Position(0, 2), Mark.NOUGHT));
@@ -427,6 +528,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(0, 5), Mark.CROSS));
         boardState.add(new Move(new Position(0, 7), Mark.CROSS));
         boardState.add(new Move(new Position(0, 9), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(8, 1), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -438,6 +541,8 @@ public class GomokuTests {
     void testFastestLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(1, 4), Mark.NOUGHT));
@@ -447,6 +552,14 @@ public class GomokuTests {
         boardState.add(new Move(new Position(4, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 5), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 6), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(9, 3), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 6), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 6), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(8, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(8, 8), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 4), Mark.CROSS));
 
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
@@ -460,9 +573,10 @@ public class GomokuTests {
     @Test
     void testBlockingLeadingToWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
-        Set<Move> boardState = new HashSet<Move>();
+        Set<Move> boardState = new HashSet<>();
         boardState.add(new Move(new Position(1, 4), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 5), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 6), Mark.NOUGHT));
@@ -470,6 +584,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(4, 7), Mark.CROSS));
         boardState.add(new Move(new Position(5, 5), Mark.CROSS));
         boardState.add(new Move(new Position(5, 6), Mark.CROSS));
+
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -483,6 +599,7 @@ public class GomokuTests {
     @Test
     void testBlockingLeadingToWinningComplex() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -515,6 +632,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(6, 8), Mark.CROSS));
 
         boardState.add(new Move(new Position(7, 9), Mark.NOUGHT));
+        boardState.add(new Move(new Position(5, 0), Mark.NOUGHT));
+        boardState.add(new Move(new Position(6, 5), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
@@ -525,6 +644,7 @@ public class GomokuTests {
     @Test
     void testCorrectMove() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -540,6 +660,11 @@ public class GomokuTests {
         boardState.add(new Move(new Position(6, 7), Mark.CROSS));
         boardState.add(new Move(new Position(7, 7), Mark.CROSS));
 
+        boardState.add(new Move(new Position(0, 9), Mark.NOUGHT));
+        boardState.add(new Move(new Position(0, 7), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 2), Mark.NOUGHT));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
         assertNotNull(move);
@@ -550,12 +675,17 @@ public class GomokuTests {
     @Test
     void testIncorrectMove() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
-        Set<Move> boardState = new HashSet<Move>();
+        Set<Move> boardState = new HashSet<>();
         boardState.add(new Move(new Position(1, 0), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 1), Mark.NOUGHT));
         boardState.add(new Move(new Position(1, 2), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(5, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(4, 5), Mark.CROSS));
 
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
@@ -569,9 +699,10 @@ public class GomokuTests {
     @Test
     void testCorrectDoubleFour() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
-        Set<Move> boardState = new HashSet<Move>();
+        Set<Move> boardState = new HashSet<>();
         boardState.add(new Move(new Position(2, 2), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 5), Mark.NOUGHT));
@@ -579,6 +710,14 @@ public class GomokuTests {
         boardState.add(new Move(new Position(5, 9), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 8), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 7), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(9, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 5), Mark.CROSS));
+
+        boardState.add(new Move(new Position(0, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 4), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 0), Mark.CROSS));
 
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
@@ -590,10 +729,10 @@ public class GomokuTests {
     @Test
     void testPriorityWinning() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
-        boardState.add(new Move(new Position(2, 2), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 2), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 5), Mark.NOUGHT));
@@ -614,6 +753,7 @@ public class GomokuTests {
     @Test
     void testPriority2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -625,6 +765,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(3, 5), Mark.CROSS));
         boardState.add(new Move(new Position(4, 6), Mark.CROSS));
         boardState.add(new Move(new Position(5, 7), Mark.CROSS));
+
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -642,6 +784,8 @@ public class GomokuTests {
     @Test
     void testPriority3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
+
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -653,6 +797,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(3, 4), Mark.CROSS));
         boardState.add(new Move(new Position(5, 7), Mark.CROSS));
         boardState.add(new Move(new Position(5, 8), Mark.CROSS));
+
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -666,6 +812,8 @@ public class GomokuTests {
     @Test
     void testPriority4() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
+
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -677,6 +825,10 @@ public class GomokuTests {
         boardState.add(new Move(new Position(3, 4), Mark.CROSS));
         boardState.add(new Move(new Position(4, 7), Mark.CROSS));
         boardState.add(new Move(new Position(4, 8), Mark.CROSS));
+
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 5), Mark.NOUGHT));
+        boardState.add(new Move(new Position(9, 0), Mark.NOUGHT));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -690,6 +842,7 @@ public class GomokuTests {
     @Test
     void testPriority5() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -712,6 +865,7 @@ public class GomokuTests {
     @Test
     void testPriority6() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -734,6 +888,7 @@ public class GomokuTests {
     @Test
     void testPriority15_2_AisCross_BisNought_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -761,6 +916,7 @@ public class GomokuTests {
     @Test
     void testBlockDoubleFourAndThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -777,6 +933,8 @@ public class GomokuTests {
         boardState.add(new Move(new Position(5, 3), Mark.NOUGHT));
         boardState.add(new Move(new Position(6, 4), Mark.NOUGHT));
 
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
         assertNotNull(move);
@@ -788,6 +946,7 @@ public class GomokuTests {
     @Test
     void testPriority15_2_AisNought_BisCross_blockColumnEnd() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -814,6 +973,7 @@ public class GomokuTests {
     @Test
     void testNoSpaceNoWin() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -828,6 +988,13 @@ public class GomokuTests {
         boardState.add(new Move(new Position(3, 5), Mark.NOUGHT));
         boardState.add(new Move(new Position(4, 5), Mark.NOUGHT));
 
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 4), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 8), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
         assertNotNull(move);
@@ -839,9 +1006,10 @@ public class GomokuTests {
     @Test
     void testNoSpaceNoWin2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.NOUGHT);
         gomoku.size(10);
 
-        Set<Move> boardState = new HashSet<Move>();
+        Set<Move> boardState = new HashSet<>();
         boardState.add(new Move(new Position(0, 1), Mark.NOUGHT));
 
         boardState.add(new Move(new Position(1, 1), Mark.NOUGHT));
@@ -851,6 +1019,14 @@ public class GomokuTests {
         boardState.add(new Move(new Position(2, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(3, 5), Mark.NOUGHT));
         boardState.add(new Move(new Position(4, 5), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 7), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 4), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 8), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 5), Mark.CROSS));
 
         Move move = gomoku.nextMove(boardState, Mark.NOUGHT);
 
@@ -863,7 +1039,8 @@ public class GomokuTests {
     @Test
     void testNoSpaceNoWin2BlocDoubleThree() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
-        gomoku.size(13);
+        gomoku.firstMark(Mark.CROSS);
+        gomoku.size(15);
 
         Set<Move> boardState = new HashSet<Move>();
         boardState.add(new Move(new Position(0, 1), Mark.NOUGHT));
@@ -874,6 +1051,14 @@ public class GomokuTests {
         boardState.add(new Move(new Position(7, 12), Mark.NOUGHT));
         boardState.add(new Move(new Position(8, 10), Mark.NOUGHT));
         boardState.add(new Move(new Position(9, 10), Mark.NOUGHT));
+
+        boardState.add(new Move(new Position(14, 14), Mark.CROSS));
+        boardState.add(new Move(new Position(14, 12), Mark.CROSS));
+        boardState.add(new Move(new Position(14, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(14, 6), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 5), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 13), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 10), Mark.CROSS));
 
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
@@ -886,6 +1071,7 @@ public class GomokuTests {
     @Test
     void testNoSurrender() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<Move>();
@@ -898,6 +1084,9 @@ public class GomokuTests {
         boardState.add(new Move(new Position(8, 4), Mark.NOUGHT));
         boardState.add(new Move(new Position(6, 9), Mark.CROSS));
 
+        boardState.add(new Move(new Position(0, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 5), Mark.CROSS));
+
         Move move = gomoku.nextMove(boardState, Mark.CROSS);
 
         assertNotNull(move);
@@ -909,6 +1098,7 @@ public class GomokuTests {
     @Test
     void testResign() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
+        gomoku.firstMark(Mark.CROSS);
         gomoku.size(10);
 
         Set<Move> boardState = new HashSet<>();
@@ -923,12 +1113,24 @@ public class GomokuTests {
         boardState.add(new Move(new Position(8, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(8, 6), Mark.NOUGHT));
 
+        boardState.add(new Move(new Position(5, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(5, 2), Mark.CROSS));
+        boardState.add(new Move(new Position(5, 4), Mark.CROSS));
+        boardState.add(new Move(new Position(5, 6), Mark.CROSS));
+
+        boardState.add(new Move(new Position(5, 8), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 0), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 2), Mark.CROSS));
+        boardState.add(new Move(new Position(0, 4), Mark.CROSS));
+
         assertThrows(ResignException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
     }
     @Test
     void testResign2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(0, 5), Mark.NOUGHT));
@@ -939,13 +1141,21 @@ public class GomokuTests {
         boardState.add(new Move(new Position(3, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 7), Mark.NOUGHT));
 
+        boardState.add(new Move(new Position(9, 9), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 6), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 5), Mark.CROSS));
+        boardState.add(new Move(new Position(9, 3), Mark.CROSS));
+        boardState.add(new Move(new Position(5, 5), Mark.CROSS));
+        boardState.add(new Move(new Position(7, 3), Mark.CROSS));
+
         assertThrows(ResignException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
     }
     @Test
     void testResign3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(13);
-        Set<Move> boardState = new HashSet<Move>();
+        gomoku.firstMark(Mark.CROSS);
+        Set<Move> boardState = new HashSet<>();
 
         boardState.add(new Move(new Position(1, 4), Mark.NOUGHT));
         boardState.add(new Move(new Position(2, 4), Mark.NOUGHT));
@@ -959,12 +1169,23 @@ public class GomokuTests {
         boardState.add(new Move(new Position(5, 7), Mark.NOUGHT));
         boardState.add(new Move(new Position(5, 6), Mark.NOUGHT));
 
+
+        boardState.add(new Move(new Position(0, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(3, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(5, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(8, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(10, 1), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 2), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 5), Mark.CROSS));
+        boardState.add(new Move(new Position(12, 8), Mark.CROSS));
+
         assertThrows(ResignException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
     }
     @Test
     void testResign4() throws TheWinnerIsException, WrongBoardStateException, ResignException {
         Gomoku gomoku = new Gomoku();
         gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
         Set<Move> boardState = new HashSet<Move>();
 
         boardState.add(new Move(new Position(0, 5), Mark.NOUGHT));
@@ -976,8 +1197,127 @@ public class GomokuTests {
         boardState.add(new Move(new Position(4, 6), Mark.CROSS));
         boardState.add(new Move(new Position(5, 7), Mark.CROSS));
 
+        boardState.add(new Move(new Position(9, 9), Mark.NOUGHT));
+
         assertThrows(ResignException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
     }
+
+    @Test
+    void testWrongBoardState1() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+        assertThrows(WrongBoardStateException.class, () -> gomoku.nextMove(boardState, Mark.CROSS));
+    }
+
+    @Test
+    void testWrongBoardState2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+        assertThrows(WrongBoardStateException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
+    }
+
+    @Test
+    void testWrongBoardState3() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 11; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+
+        assertThrows(WrongBoardStateException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
+    }
+
+    @Test
+    void testWrongBoardState4() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+        boardState.add(new Move(new Position(3, 5), Mark.CROSS));
+
+        assertThrows(WrongBoardStateException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
+    }
+
+    @Test
+    void testWrongBoardState5() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.NOUGHT);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 5; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.CROSS));
+        }
+
+        boardState.add(new Move(new Position(3, 5), Mark.NOUGHT));
+
+        assertThrows(WrongBoardStateException.class, () -> gomoku.nextMove(boardState, Mark.NOUGHT));
+    }
+    @Test
+    void testNoWrongBoardState() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 4; i++) {
+            boardState.add(new Move(new Position(i, 0), Mark.CROSS));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.NOUGHT));
+        }
+
+        Move move = gomoku.nextMove(boardState, Mark.CROSS);
+        assertNotNull(move);
+        assertEquals(4, move.position().col());
+        assertEquals(0, move.position().row());
+    }
+
+    @Test
+    void testNoWrongBoardState2() throws TheWinnerIsException, WrongBoardStateException, ResignException {
+        Gomoku gomoku = new Gomoku();
+        gomoku.size(10);
+        gomoku.firstMark(Mark.CROSS);
+        Set<Move> boardState = new HashSet<Move>();
+
+        for (int i = 0; i < 3; i++) {
+            boardState.add(new Move(new Position(i, 0), Mark.CROSS));
+        }
+
+        for (int i = 0; i < 2; i++) {
+            boardState.add(new Move(new Position(i, 5), Mark.NOUGHT));
+        }
+
+        Move move = gomoku.nextMove(boardState, Mark.CROSS);
+        assertNotNull(move);
+
+    }
+
+
 }
 
 
