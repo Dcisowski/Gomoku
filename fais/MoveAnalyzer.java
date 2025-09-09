@@ -12,7 +12,7 @@ public class MoveAnalyzer {
         for (i = 0; i < observers.length; i++) observers[i].onCandidate(t, m);
     }
 
-    public AnalysisResult analyze(Board board, Mark toMove)
+    public void analyze(Board board, Mark toMove)
             throws WrongBoardStateException, TheWinnerIsException, ResignException {
 
         Mark winner = detectWinner(board);
@@ -33,16 +33,15 @@ public class MoveAnalyzer {
         Move[] myWins = winningMoves(board, mine, 1);
         if (myWins[0] != null) {
             notifyCandidate(MoveType.WINNING, myWins[0]);
-            return new AnalysisResult(MoveType.WINNING, myWins[0]);
         }
 
         // 2) Obrona: natychmiastowe wygrane przeciwnika
         Move[] oppWins = winningMoves(board, opp, 3);
         int oppWinCount = countNonNull(oppWins);
-        if (oppWinCount >= 2) return AnalysisResult.resign();
+        if (oppWinCount >= 2) return ;
         if (oppWinCount == 1) {
-            notifyCandidate(MoveType.BLOCKING, oppWins[0]);
-            return new AnalysisResult(MoveType.BLOCKING, oppWins[0]);
+            Move move = new Move(oppWins[0].position(), toMove);
+            notifyCandidate(MoveType.BLOCKING_WINNING, move);
         }
 
         // 3) Atak: Otwarta czwórka gracza (wygrywa szybciej niż otwarta 4 przeciwnika)
@@ -69,10 +68,9 @@ public class MoveAnalyzer {
         }
         if (bestO4 != null) {
             notifyCandidate(MoveType.CREATE_OPEN_FOUR, bestO4);
-            return new AnalysisResult(MoveType.CREATE_OPEN_FOUR, bestO4);
         }
 
-        // 4) Obrana przed otwartą czwórka i trojka
+        // 4) Obrana przed otwartą czwórka i trojka lub atak swoją otwartą trójką
         int initialO4 = collectO4Creation(board, opp, null, null);
         int initialD3 = collectLooseD3Creation(board, opp, null, null);
         int initialAll = initialO4 + initialD3;
@@ -88,10 +86,8 @@ public class MoveAnalyzer {
                 int remainAll = remainO4 + remainD3;
 
                 if (initialAll >= 2 && remainAll >= 1) throw new ResignException();
-
-                notifyCandidate(MoveType.BLOCKING, bestBlock);
-                return new AnalysisResult(MoveType.BLOCKING, bestBlock);
-            } else {
+                if (bestO4 == null) notifyCandidate(MoveType.BLOCKING, bestBlock);
+           } else {
                 if (initialAll >= 2) throw new ResignException();
             }
         }
@@ -99,20 +95,17 @@ public class MoveAnalyzer {
         // 5) Luzny double-three → preferowany atak
         Move looseD3 = bestLooseDoubleThree(board, mine);
         if (looseD3 != null) {
-            notifyCandidate(MoveType.CREATE_DOUBLE_THREAT, looseD3);
-            return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, looseD3);
+            notifyCandidate(MoveType.CREATE_BEST_DOUBLE_THREAT, looseD3);
         }
 
         // 6) Mocny double-three
         if (bestDouble3 != null) {
             notifyCandidate(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
-            return new AnalysisResult(MoveType.CREATE_DOUBLE_THREAT, bestDouble3);
         }
 
         // 7) Neutralny
         Move neutral = pickNeutral(board, mine);
         notifyCandidate(MoveType.ANY, neutral);
-        return new AnalysisResult(MoveType.ANY, neutral);
     }
 
     private Mark detectWinner(Board b) throws WrongBoardStateException {

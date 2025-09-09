@@ -33,25 +33,29 @@ public class Gomoku implements Game {
 
         int cross = b.countMarks(Mark.CROSS);
         int nought = b.countMarks(Mark.NOUGHT);
+        int diff = cross - nought;
 
         if (first == Mark.CROSS) {
             if (nought > cross) throw new WrongBoardStateException();
-            if (cross - nought > 1) throw new WrongBoardStateException();
+            if (diff == 0 && nextMoveMark != Mark.CROSS) throw new WrongBoardStateException();
+            if (diff == 1 && nextMoveMark != Mark.NOUGHT) throw new WrongBoardStateException();
+            if (cross - nought > 1) throw new  WrongBoardStateException();
         } else {
             if (cross > nought) throw new WrongBoardStateException();
+            if (diff == 0 && nextMoveMark != Mark.NOUGHT) throw new WrongBoardStateException();
+            if (diff == -1 && nextMoveMark != Mark.CROSS) throw new WrongBoardStateException();
             if (nought - cross > 1) throw new WrongBoardStateException();
         }
 
         MoveDecisionCollector collector = new MoveDecisionCollector();
         MoveAnalyzer analyzer = new MoveAnalyzer(collector);
 
-        AnalysisResult res = analyzer.analyze(b, nextMoveMark);
+        analyzer.analyze(b, nextMoveMark);
 
         Move decided = collector.best();
         if (decided != null) {
             return decided;
         }
-        if (res != null && res.move != null) return res.move;
 
         throw new ResignException();
     }

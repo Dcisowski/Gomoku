@@ -3,8 +3,10 @@ import fais.zti.oramus.gomoku.Move;
 public final class MoveDecisionCollector implements MoveObserver {
 
     private Move win;
+    private Move blockWinning;
     private Move block;
     private Move openFour;
+    private Move bestDoubleThreat;
     private Move doubleThreat;
     private Move any;
 
@@ -13,8 +15,10 @@ public final class MoveDecisionCollector implements MoveObserver {
         if (move == null) return;
         switch (type) {
             case WINNING:             win = better(win, move); break;
+            case BLOCKING_WINNING:    blockWinning = better(blockWinning, move); break;
             case BLOCKING:            block = better(block, move); break;
             case CREATE_OPEN_FOUR:    openFour = better(openFour, move); break;
+            case CREATE_BEST_DOUBLE_THREAT:bestDoubleThreat = better(openFour, move); break;
             case CREATE_DOUBLE_THREAT:doubleThreat = better(doubleThreat, move); break;
             case ANY:                 any = better(any, move); break;
             default: /* RESIGN nie trafia tu */
@@ -24,20 +28,14 @@ public final class MoveDecisionCollector implements MoveObserver {
     /** Rekomendowany ruch wg priorytetów. */
     public Move best() {
         if (win != null) return win;
+        if (blockWinning != null) return blockWinning;
         if (block != null) return block;
         if (openFour != null) return openFour;
+        if (bestDoubleThreat != null) return bestDoubleThreat;
         if (doubleThreat != null) return doubleThreat;
         return any;
     }
 
-    public MoveType bestType() {
-        if (win != null) return MoveType.WINNING;
-        if (block != null) return MoveType.BLOCKING;
-        if (openFour != null) return MoveType.CREATE_OPEN_FOUR;
-        if (doubleThreat != null) return MoveType.CREATE_DOUBLE_THREAT;
-        if (any != null) return MoveType.ANY;
-        return null;
-    }
 
 
     private Move better(Move a, Move b) {

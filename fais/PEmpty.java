@@ -6,6 +6,5 @@ public final class PEmpty implements Pattern {
         return line[start] == Mark.NULL;
     }
     public void suggest(LineSlice ctx, int start, Mark mine, Mark opp, MoveObserver obs, MoveType asType){
-        // brak — atom nic nie sugeruje
     }
 }
