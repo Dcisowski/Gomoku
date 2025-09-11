@@ -4,10 +4,12 @@ public class MoveAnalyzer {
     private static final Direction[] AXES = new Direction[]{Direction.E, Direction.S, Direction.SE, Direction.NE};
 
     private MoveObserver[] observers = new MoveObserver[0];
-    public MoveAnalyzer(MoveObserver... obs){
+
+    public MoveAnalyzer(MoveObserver... obs) {
         if (obs != null) this.observers = obs;
     }
-    private void notifyCandidate(MoveType t, Move m){
+
+    private void notifyCandidate(MoveType t, Move m) {
         int i;
         for (i = 0; i < observers.length; i++) observers[i].onCandidate(t, m);
     }
@@ -15,7 +17,7 @@ public class MoveAnalyzer {
     public void analyze(Board board, Mark toMove)
             throws WrongBoardStateException, TheWinnerIsException, ResignException {
 
-        Mark winner = detectWinner(board);
+        Mark winner = detectWinner(board, toMove);
         if (winner != null) throw new TheWinnerIsException(winner);
 
         Mark mine = toMove;
@@ -38,7 +40,7 @@ public class MoveAnalyzer {
         // 2) Obrona: natychmiastowe wygrane przeciwnika
         Move[] oppWins = winningMoves(board, opp, 3);
         int oppWinCount = countNonNull(oppWins);
-        if (oppWinCount >= 2) return ;
+        if (oppWinCount >= 2) return;
         if (oppWinCount == 1) {
             Move move = new Move(oppWins[0].position(), toMove);
             notifyCandidate(MoveType.BLOCKING_WINNING, move);
@@ -87,7 +89,7 @@ public class MoveAnalyzer {
 
                 if (initialAll >= 2 && remainAll >= 1) throw new ResignException();
                 if (bestO4 == null) notifyCandidate(MoveType.BLOCKING, bestBlock);
-           } else {
+            } else {
                 if (initialAll >= 2) throw new ResignException();
             }
         }
@@ -108,10 +110,10 @@ public class MoveAnalyzer {
         notifyCandidate(MoveType.ANY, neutral);
     }
 
-    private Mark detectWinner(Board b) throws WrongBoardStateException {
+    private Mark detectWinner(Board b, Mark playerMark) throws WrongBoardStateException {
         boolean x = hasFive(b, Mark.CROSS);
         boolean o = hasFive(b, Mark.NOUGHT);
-        if (x && o) throw new WrongBoardStateException();
+        if (x && o) return playerMark;
         if (x) return Mark.CROSS;
         if (o) return Mark.NOUGHT;
         return null;
@@ -137,7 +139,10 @@ public class MoveAnalyzer {
                     b.set(r, c, who);
                     boolean win = false;
                     for (int i = 0; i < AXES.length; i++)
-                        if (b.runLengthThrough(r, c, AXES[i], who) >= 5) { win = true; break; }
+                        if (b.runLengthThrough(r, c, AXES[i], who) >= 5) {
+                            win = true;
+                            break;
+                        }
                     b.set(r, c, Mark.NULL);
                     if (win) out[found++] = new Move(new Position(c, r), who);
                 }
@@ -203,10 +208,10 @@ public class MoveAnalyzer {
     private Move bestUnifiedThreatBlock(Board b, Mark opp, Mark me) {
         int n = b.size();
 
-        int[] rO4 = new int[n*n], cO4 = new int[n*n];
+        int[] rO4 = new int[n * n], cO4 = new int[n * n];
         int kO4 = collectO4Creation(b, opp, rO4, cO4);
 
-        int[] rD3 = new int[n*n], cD3 = new int[n*n];
+        int[] rD3 = new int[n * n], cD3 = new int[n * n];
         int kD3 = collectLooseD3Creation(b, opp, rD3, cD3);
 
         if (kO4 + kD3 == 0) return null;
@@ -227,8 +232,8 @@ public class MoveAnalyzer {
                 if (!vis[r][c]) continue;
 
                 b.set(r, c, me);
-                int remO4  = collectO4Creation(b, opp, null, null);
-                int remD3  = collectLooseD3Creation(b, opp, null, null);
+                int remO4 = collectO4Creation(b, opp, null, null);
+                int remD3 = collectLooseD3Creation(b, opp, null, null);
                 int remAll = remO4 + remD3;
                 int center = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
                 b.set(r, c, Mark.NULL);
@@ -349,7 +354,10 @@ public class MoveAnalyzer {
                 b.set(r, c, Mark.NULL);
 
                 if (threatAxes >= 2 && open3Axes >= 1) {
-                    if (rs != null) { rs[cnt] = r; cs[cnt] = c; }
+                    if (rs != null) {
+                        rs[cnt] = r;
+                        cs[cnt] = c;
+                    }
                     cnt++;
                 }
             }
@@ -363,15 +371,15 @@ public class MoveAnalyzer {
 
         int bestOpen3Axes = -1;
         int bestThreatAxes = -1;
-        int bestFeasible  = -1;
-        int bestFragile   = 1;
-        int bestOpen      = -1;
-        int bestLen       = 0;
-        int bestFree      = -1;
+        int bestFeasible = -1;
+        int bestFragile = 1;
+        int bestOpen = -1;
+        int bestLen = 0;
+        int bestFree = -1;
         int bestSurviveThreat = -1;
-        int bestSurviveOpen3  = -1;
-        int bestAdj       = -1;
-        int bestCenter    = Integer.MAX_VALUE;
+        int bestSurviveOpen3 = -1;
+        int bestAdj = -1;
+        int bestCenter = Integer.MAX_VALUE;
 
         Mark opp = (mine == Mark.CROSS ? Mark.NOUGHT : Mark.CROSS);
 
@@ -387,10 +395,11 @@ public class MoveAnalyzer {
                 int chosenFeas = 0;
                 int chosenFrag = 1;
                 int chosenOpen = 0;
-                int chosenLen  = 1;
+                int chosenLen = 1;
                 int chosenFree = 0;
 
-                int[] br = new int[8], bc = new int[8]; int bk = 0;
+                int[] br = new int[8], bc = new int[8];
+                int bk = 0;
 
                 for (int i = 0; i < AXES.length; i++) {
                     Direction d = AXES[i];
@@ -419,13 +428,29 @@ public class MoveAnalyzer {
 
                     if (endAEmpty) {
                         boolean seen = false;
-                        for (int t = 0; t < bk; t++) if (br[t] == ends[0].r && bc[t] == ends[0].c) { seen = true; break; }
-                        if (!seen && bk < br.length) { br[bk] = ends[0].r; bc[bk] = ends[0].c; bk++; }
+                        for (int t = 0; t < bk; t++)
+                            if (br[t] == ends[0].r && bc[t] == ends[0].c) {
+                                seen = true;
+                                break;
+                            }
+                        if (!seen && bk < br.length) {
+                            br[bk] = ends[0].r;
+                            bc[bk] = ends[0].c;
+                            bk++;
+                        }
                     }
                     if (endBEmpty) {
                         boolean seen = false;
-                        for (int t = 0; t < bk; t++) if (br[t] == ends[1].r && bc[t] == ends[1].c) { seen = true; break; }
-                        if (!seen && bk < br.length) { br[bk] = ends[1].r; bc[bk] = ends[1].c; bk++; }
+                        for (int t = 0; t < bk; t++)
+                            if (br[t] == ends[1].r && bc[t] == ends[1].c) {
+                                seen = true;
+                                break;
+                            }
+                        if (!seen && bk < br.length) {
+                            br[bk] = ends[1].r;
+                            bc[bk] = ends[1].c;
+                            bk++;
+                        }
                     }
 
                     if (feas > chosenFeas
@@ -436,7 +461,7 @@ public class MoveAnalyzer {
                         chosenFeas = feas;
                         chosenFrag = frag;
                         chosenOpen = open;
-                        chosenLen  = len;
+                        chosenLen = len;
                         chosenFree = free;
                     }
                 }
@@ -445,7 +470,7 @@ public class MoveAnalyzer {
                 int center = Math.abs(r - (n / 2)) + Math.abs(c - (n / 2));
 
                 int surviveThreat = threatAxes;
-                int surviveOpen3  = open3Axes;
+                int surviveOpen3 = open3Axes;
                 if (bk > 0) {
                     int minTh = Integer.MAX_VALUE, minO3 = Integer.MAX_VALUE;
                     for (int t = 0; t < bk; t++) {
@@ -466,12 +491,13 @@ public class MoveAnalyzer {
                         }
 
                         if (th2 < minTh || (th2 == minTh && o32 < minO3)) {
-                            minTh = th2; minO3 = o32;
+                            minTh = th2;
+                            minO3 = o32;
                         }
                         b.set(br[t], bc[t], Mark.NULL);
                     }
                     surviveThreat = minTh;
-                    surviveOpen3  = minO3;
+                    surviveOpen3 = minO3;
                 }
 
                 b.set(r, c, Mark.NULL);
@@ -479,31 +505,38 @@ public class MoveAnalyzer {
                 boolean better = false;
                 if (open3Axes > bestOpen3Axes) better = true;
                 else if (open3Axes == bestOpen3Axes && threatAxes > bestThreatAxes) better = true;
-                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas > bestFeasible) better = true;
-                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag < bestFragile) better = true;
-                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen > bestOpen) better = true;
-                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen > bestLen) better = true;
-                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree > bestFree) better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas > bestFeasible)
+                    better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag < bestFragile)
+                    better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen > bestOpen)
+                    better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen > bestLen)
+                    better = true;
+                else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree > bestFree)
+                    better = true;
                 else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree
                         && (surviveThreat > bestSurviveThreat
                         || (surviveThreat == bestSurviveThreat && surviveOpen3 > bestSurviveOpen3))) better = true;
                 else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree
-                        && surviveThreat == bestSurviveThreat && surviveOpen3 == bestSurviveOpen3 && adj > bestAdj) better = true;
+                        && surviveThreat == bestSurviveThreat && surviveOpen3 == bestSurviveOpen3 && adj > bestAdj)
+                    better = true;
                 else if (open3Axes == bestOpen3Axes && threatAxes == bestThreatAxes && chosenFeas == bestFeasible && chosenFrag == bestFragile && chosenOpen == bestOpen && chosenLen == bestLen && chosenFree == bestFree
-                        && surviveThreat == bestSurviveThreat && surviveOpen3 == bestSurviveOpen3 && adj == bestAdj && center < bestCenter) better = true;
+                        && surviveThreat == bestSurviveThreat && surviveOpen3 == bestSurviveOpen3 && adj == bestAdj && center < bestCenter)
+                    better = true;
 
                 if (better) {
                     bestOpen3Axes = open3Axes;
                     bestThreatAxes = threatAxes;
-                    bestFeasible  = chosenFeas;
-                    bestFragile   = chosenFrag;
-                    bestOpen      = chosenOpen;
-                    bestLen       = chosenLen;
-                    bestFree      = chosenFree;
+                    bestFeasible = chosenFeas;
+                    bestFragile = chosenFrag;
+                    bestOpen = chosenOpen;
+                    bestLen = chosenLen;
+                    bestFree = chosenFree;
                     bestSurviveThreat = surviveThreat;
-                    bestSurviveOpen3  = surviveOpen3;
-                    bestAdj       = adj;
-                    bestCenter    = center;
+                    bestSurviveOpen3 = surviveOpen3;
+                    bestAdj = adj;
+                    bestCenter = center;
                     best = new Move(new Position(c, r), mine);
                 }
             }

@@ -1,13 +1,27 @@
 import fais.zti.oramus.gomoku.*;
+
 import java.util.Iterator;
 import java.util.Set;
 
 public class Gomoku implements Game {
-    private int n = 10; private boolean periodic = false; private Mark first = Mark.CROSS;
+    private int n = 10;
+    private boolean periodic = false;
+    private Mark first = Mark.CROSS;
 
-    @Override public void firstMark(Mark first){ this.first = first; }
-    @Override public void size(int size){ this.n = size; }
-    @Override public void periodicBoundaryConditionsInUse(){ this.periodic = true; }
+    @Override
+    public void firstMark(Mark first) {
+        this.first = first;
+    }
+
+    @Override
+    public void size(int size) {
+        this.n = size;
+    }
+
+    @Override
+    public void periodicBoundaryConditionsInUse() {
+        this.periodic = true;
+    }
 
     @Override
     public Move nextMove(Set<Move> boardState, Mark nextMoveMark)
@@ -15,7 +29,7 @@ public class Gomoku implements Game {
         BoardFactory f = periodic ? new PeriodicBoardFactory() : new StandardBoardFactory();
         Board b = f.create(n);
 
-        if (first == null){
+        if (first == null) {
             throw new WrongBoardStateException();
         }
 
@@ -39,7 +53,7 @@ public class Gomoku implements Game {
             if (nought > cross) throw new WrongBoardStateException();
             if (diff == 0 && nextMoveMark != Mark.CROSS) throw new WrongBoardStateException();
             if (diff == 1 && nextMoveMark != Mark.NOUGHT) throw new WrongBoardStateException();
-            if (cross - nought > 1) throw new  WrongBoardStateException();
+            if (cross - nought > 1) throw new WrongBoardStateException();
         } else {
             if (cross > nought) throw new WrongBoardStateException();
             if (diff == 0 && nextMoveMark != Mark.NOUGHT) throw new WrongBoardStateException();
